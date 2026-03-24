@@ -1852,50 +1852,237 @@ async function _detectLoop(vid){
   g('camBtn').textContent = '📷 Start Camera'; g('camBtn').disabled = false;
 }
 
-/* ── HANDLE SCANNED / TYPED CODE ── */
-function handleCode(code){
+/* ════════════════════════════════════════
+   HANDLE SCANNED / TYPED CODE
+════════════════════════════════════════ */
+async function handleCode(code){
   if(!code || !code.trim()) return;
   code = code.trim();
 
-  // ── POS mode: add to cart ──
+  // ── POS mode: add product to cart ──
   if(S.camMode === 'pos'){
     stopCam();
     const p = S.prods.find(x => x.bc === code || String(x.id) === code);
     if(p){ addToCart(p.id); toast('✅ Added: ' + p.name, 'success'); }
-    else  { toast('No product found for barcode: ' + code, 'warn'); }
+    else  { toast('Product not found for barcode: ' + code, 'warn'); }
     return;
   }
 
-  // ── PROD mode: fill barcode field in Add/Edit product form ──
+  // ── PROD mode: lookup barcode online → auto-fill product form ──
   if(S.camMode === 'prod'){
     stopCam();
-    // Try to auto-fill name if product with this barcode already exists
+
+    // Check if barcode already exists in our inventory
     const existing = S.prods.find(x => x.bc === code);
-    g('pB').value = code;
     if(existing){
-      toast('⚠️ This barcode belongs to: ' + existing.name, 'warn');
+      toast('⚠️ Barcode already used by: ' + existing.name, 'warn');
+      g('pB').value = code;
+      return;
+    }
+
+    // Show loading state in the product form
+    g('pB').value = code;
+    g('pN').value = '';
+    g('pEx').value = '';
+    _setFormLookupState(true);
+
+    // Lookup from Open Food Facts (free global food product database)
+    const info = await _lookupBarcode(code);
+    _setFormLookupState(false);
+
+    if(info){
+      // Auto-fill everything we found
+      if(info.name)    g('pN').value  = info.name;
+      if(info.emoji)   g('pE').value  = info.emoji;
+      if(info.cat)     g('pCat').value = info.cat;
+      if(info.unit)    g('pUn').value  = info.unit;
+      if(info.expiry)  g('pEx').value  = info.expiry;
+
+      // Highlight filled fields so user knows what was auto-filled
+      _flashField('pN');
+      if(info.expiry) _flashField('pEx');
+
+      toast('✅ Product info loaded! Just add cost & quantity.', 'success');
     } else {
-      toast('✅ Barcode scanned: ' + code, 'success');
+      toast('Barcode scanned (' + code + ') — product not found online. Fill in manually.', 'info');
+      // Put cursor in name field for manual typing
+      setTimeout(() => g('pN').focus(), 200);
     }
     return;
   }
 
-  // ── INV mode: find product and show options ──
+  // ── INV mode: find product in inventory, offer Edit or Delete ──
   if(S.camMode === 'inv'){
     stopCam();
     const p = S.prods.find(x => x.bc === code || String(x.id) === code);
     if(!p){
-      toast('No product found for barcode: ' + code, 'warn');
-      // Offer to add as new product
-      if(confirm('No product found for barcode:\n"' + code + '"\n\nDo you want to ADD this as a new product?')){
+      // Not in inventory — offer to look up online and add
+      toast('Product not found in inventory: ' + code, 'warn');
+      if(confirm('Barcode "' + code + '" is not in your inventory.\n\nLook it up online and add it as a new product?')){
         openAddProd();
-        setTimeout(() => { g('pB').value = code; }, 100);
+        setTimeout(async () => {
+          g('pB').value = code;
+          _setFormLookupState(true);
+          const info = await _lookupBarcode(code);
+          _setFormLookupState(false);
+          if(info){
+            if(info.name)   g('pN').value  = info.name;
+            if(info.emoji)  g('pE').value  = info.emoji;
+            if(info.cat)    g('pCat').value = info.cat;
+            if(info.unit)   g('pUn').value  = info.unit;
+            if(info.expiry) g('pEx').value  = info.expiry;
+            _flashField('pN');
+            toast('✅ Product info loaded! Just add cost & quantity.', 'success');
+          }
+        }, 200);
       }
       return;
     }
-    // Found — show action dialog
     _showInvScanResult(p);
   }
+}
+
+/* ── Flash a field green briefly to show it was auto-filled ── */
+function _flashField(id){
+  const el = g(id); if(!el) return;
+  el.style.borderColor = 'var(--ok)';
+  el.style.background  = 'rgba(46,213,115,.08)';
+  setTimeout(() => { el.style.borderColor = ''; el.style.background = ''; }, 2500);
+}
+
+/* ── Show loading state while looking up barcode ── */
+function _setFormLookupState(loading){
+  const nameEl = g('pN');
+  if(loading){
+    nameEl.value = '⏳ Looking up barcode online…';
+    nameEl.disabled = true;
+    nameEl.style.color = 'var(--t2)';
+  } else {
+    nameEl.disabled = false;
+    nameEl.style.color = '';
+    if(nameEl.value.startsWith('⏳')) nameEl.value = '';
+  }
+}
+
+/* ════════════════════════════════════════
+   BARCODE LOOKUP — Open Food Facts API
+   Free database of food products worldwide.
+   Works for most grocery items with EAN-13,
+   UPC-A, or other standard barcodes.
+════════════════════════════════════════ */
+async function _lookupBarcode(code){
+  try {
+    // Open Food Facts — free, no API key needed, millions of products
+    const res = await fetch(
+      `https://world.openfoodfacts.org/api/v2/product/${code}?fields=product_name,product_name_en,generic_name,categories_tags,quantity,expiration_date,best_before_date,brands,food_groups_tags`,
+      { signal: AbortSignal.timeout(6000) }
+    );
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(data.status !== 1 || !data.product) return null;
+
+    const p = data.product;
+
+    // ── Product Name ──
+    // Try several name fields, pick the best one
+    let name = p.product_name_en || p.product_name || p.generic_name || '';
+    // Add brand if available and not already in name
+    if(p.brands){
+      const brand = p.brands.split(',')[0].trim();
+      if(name && !name.toLowerCase().includes(brand.toLowerCase())) name = brand + ' ' + name;
+      else if(!name) name = brand;
+    }
+    name = name.trim();
+    // Clean up — remove extra spaces
+    name = name.replace(/\s+/g, ' ').trim();
+    // Title case
+    if(name) name = name.replace(/\b\w/g, c => c.toUpperCase());
+
+    // ── Expiry Date ──
+    let expiry = '';
+    const rawExp = p.expiration_date || p.best_before_date || '';
+    if(rawExp){
+      expiry = _parseExpiry(rawExp);
+    }
+
+    // ── Category → map to our categories ──
+    const cats = (p.categories_tags || []).join(' ').toLowerCase();
+    const fgs  = (p.food_groups_tags || []).join(' ').toLowerCase();
+    let cat = 'Other', emoji = '📦', unit = 'piece';
+
+    if(cats.includes('beverages') || cats.includes('drinks') || cats.includes('water') || cats.includes('soda') || cats.includes('juice')){
+      cat='Beverages'; emoji='🥤'; unit='bottle';
+    } else if(cats.includes('snack') || cats.includes('chip') || cats.includes('cracker') || cats.includes('biscuit') || cats.includes('cookie')){
+      cat='Food & Snacks'; emoji='🍿'; unit='pack';
+    } else if(cats.includes('noodle') || cats.includes('pasta') || cats.includes('instant')){
+      cat='Food & Snacks'; emoji='🍜'; unit='pack';
+    } else if(cats.includes('canned') || cats.includes('tuna') || cats.includes('sardine') || cats.includes('corned')){
+      cat='Canned Goods'; emoji='🥫'; unit='can';
+    } else if(cats.includes('soap') || cats.includes('shampoo') || cats.includes('hygiene') || cats.includes('personal') || cats.includes('toothpaste')){
+      cat='Personal Care'; emoji='🧴'; unit='piece';
+    } else if(cats.includes('detergent') || cats.includes('cleaning') || cats.includes('household') || cats.includes('fabric')){
+      cat='Household'; emoji='🫧'; unit='sachet';
+    } else if(cats.includes('sauce') || cats.includes('condiment') || cats.includes('vinegar') || cats.includes('ketchup')){
+      cat='Condiments'; emoji='🫙'; unit='bottle';
+    } else if(cats.includes('dairy') || cats.includes('milk') || cats.includes('cheese') || cats.includes('yogurt')){
+      cat='Food & Snacks'; emoji='🥛'; unit='piece';
+    } else if(cats.includes('coffee') || cats.includes('tea')){
+      cat='Beverages'; emoji='☕'; unit='sachet';
+    } else if(cats.includes('rice') || cats.includes('flour') || cats.includes('sugar') || cats.includes('oil')){
+      cat='Food & Snacks'; emoji='🌾'; unit='kg';
+    } else if(fgs.includes('sugary') || cats.includes('candy') || cats.includes('chocolate') || cats.includes('sweet')){
+      cat='Food & Snacks'; emoji='🍬'; unit='piece';
+    } else if(cats.includes('food') || cats.includes('meal')){
+      cat='Food & Snacks'; emoji='🍱'; unit='pack';
+    }
+
+    return { name: name || null, expiry: expiry || null, cat, emoji, unit };
+
+  } catch(err){
+    // Timeout or network error — return null silently
+    return null;
+  }
+}
+
+/* ── Parse various expiry date formats from Open Food Facts ── */
+function _parseExpiry(raw){
+  if(!raw) return '';
+  raw = raw.trim();
+
+  // Already in YYYY-MM-DD format
+  if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  // MM/YYYY or MM-YYYY
+  if(/^\d{2}[\/\-]\d{4}$/.test(raw)){
+    const parts = raw.split(/[\/\-]/);
+    return parts[1] + '-' + parts[0] + '-01';
+  }
+
+  // YYYY/MM or YYYY-MM
+  if(/^\d{4}[\/\-]\d{2}$/.test(raw)){
+    const parts = raw.split(/[\/\-]/);
+    return parts[0] + '-' + parts[1] + '-01';
+  }
+
+  // MM/DD/YYYY
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)){
+    const [m,d,y] = raw.split('/');
+    return y + '-' + m + '-' + d;
+  }
+
+  // DD.MM.YYYY
+  if(/^\d{2}\.\d{2}\.\d{4}$/.test(raw)){
+    const [d,m,y] = raw.split('.');
+    return y + '-' + m + '-' + d;
+  }
+
+  // Try generic Date parse as last resort
+  try {
+    const d = new Date(raw);
+    if(!isNaN(d)) return d.toISOString().split('T')[0];
+  } catch(e){}
+
+  return '';
 }
 
 function _showInvScanResult(p){
