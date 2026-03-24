@@ -676,6 +676,7 @@ tbody tr:active { background:rgba(255,255,255,.03); }
           <div><div class="stit">Inventory</div><div class="ssub">Products, prices &amp; stock</div></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn bgh bsm" onclick="openPriceTags()">🏷️ Tags</button>
+            <button class="btn bgh bsm" onclick="openCamInv()">📷 Scan Find</button>
             <button class="btn bp bsm"  onclick="openAddProd()">+ Add</button>
           </div>
         </div>
@@ -743,7 +744,10 @@ tbody tr:active { background:rgba(255,255,255,.03); }
 
       <!-- ── CATALOG ── -->
       <div class="page" id="page-catalog">
-        <div class="sh"><div><div class="stit">Online Catalog</div><div class="ssub">Share with customers</div></div></div>
+        <div class="sh">
+          <div><div class="stit">Online Catalog</div><div class="ssub">Share your products with customers</div></div>
+          <button class="btn bp bsm" onclick="shareCatalog()">📤 Share Full List</button>
+        </div>
         <div id="catGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;"></div>
       </div>
 
@@ -828,23 +832,28 @@ tbody tr:active { background:rgba(255,255,255,.03); }
 <div class="mov" id="mCam">
   <div class="modal" style="max-width:500px;">
     <div class="mhnd"></div>
-    <div class="mhd"><div class="mtit">📷 Barcode Scanner</div><button class="mxbtn" onclick="stopCam()">✕</button></div>
+    <div class="mhd">
+      <div class="mtit" id="camTitle">📷 Barcode Scanner</div>
+      <button class="mxbtn" onclick="stopCam()">✕</button>
+    </div>
     <div class="mbody">
+      <div id="camModeTag" style="background:rgba(61,127,255,.12);border:1px solid rgba(61,127,255,.25);border-radius:var(--rs);padding:9px 14px;font-size:13px;font-weight:600;color:var(--ac);margin-bottom:12px;text-align:center;"></div>
       <div id="camBox"><video id="camVid" autoplay playsinline muted></video><div class="sfr"><div class="sln"></div></div></div>
-      <div class="cam-st" id="camSt">Tap "Start Camera" to begin scanning</div>
+      <div class="cam-st" id="camSt">Tap "Start Camera" to begin</div>
       <div class="cam-res" id="camRes"></div>
-      <button class="btn bp" style="width:100%;margin-top:12px;" id="camBtn" onclick="startCam()">📷 Start Camera</button>
+      <button class="btn bp" style="width:100%;margin-top:10px;" id="camBtn" onclick="startCam()">📷 Start Camera</button>
       <div style="border-top:1px solid var(--bd);padding-top:14px;margin-top:14px;">
         <div class="ig" style="margin-bottom:0;">
-          <label>Or type barcode manually</label>
+          <label>Or type / paste barcode manually</label>
           <div style="display:flex;gap:8px;">
-            <input type="text" id="mbCode" placeholder="Enter barcode / SKU" autocomplete="off" autocorrect="off" inputmode="text"
+            <input type="text" id="mbCode" placeholder="Enter barcode number…" autocomplete="off" autocorrect="off" autocapitalize="off" inputmode="text"
               style="flex:1;background:var(--bg);border:1.5px solid var(--bd);border-radius:var(--rs);padding:13px 14px;color:var(--tx);font-size:16px;outline:none;"
               onkeydown="if(event.key==='Enter')doManual()">
             <button class="btn bp bsm" onclick="doManual()">Find</button>
           </div>
         </div>
       </div>
+      <div id="camNote" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.2);border-radius:var(--rs);font-size:12px;color:var(--yw);line-height:1.5;"></div>
     </div>
   </div>
 </div>
@@ -1456,52 +1465,239 @@ function saveExp(){
 }
 function delExp(id){ S.exps=S.exps.filter(x=>x.id!==id); renderExps(); refreshDash(); }
 
-/* ── REPORTS ── */
+/* ══════════════════════════════════════
+   REPORTS  — fixed print (opens new window with clean printable page)
+══════════════════════════════════════ */
 let repT='daily';
-function switchRep(t,btn){ repT=t; document.querySelectorAll('.tbb').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderRep(); }
+function switchRep(t,btn){
+  repT=t;
+  document.querySelectorAll('.tbb').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderRep();
+}
+
 function renderRep(){
   const el=g('repContent'); if(!el) return;
   const now=new Date();
+
+  /* ── By Product tab ── */
   if(repT==='products'){
-    const ps={}; S.orders.forEach(o=>o.items.forEach(i=>{ if(!ps[i.name])ps[i.name]={name:i.name,qty:0,rev:0,prof:0}; ps[i.name].qty+=i.qty; ps[i.name].rev+=i.price*i.qty; ps[i.name].prof+=(i.price-i.cost)*i.qty; }));
+    const ps={};
+    S.orders.forEach(o=>o.items.forEach(i=>{
+      if(!ps[i.name]) ps[i.name]={name:i.name,qty:0,rev:0,prof:0};
+      ps[i.name].qty+=i.qty; ps[i.name].rev+=i.price*i.qty; ps[i.name].prof+=(i.price-i.cost)*i.qty;
+    }));
     const rows=Object.values(ps).sort((a,b)=>b.rev-a.rev);
-    el.innerHTML=rows.length?rows.map(r=>`<div class="inv-card"><div class="inv-card-row"><span style="font-weight:700">${r.name}</span></div><div class="inv-card-row"><span class="inv-card-lbl">Qty Sold</span><span>${r.qty}</span></div><div class="inv-card-row"><span class="inv-card-lbl">Revenue</span><span>${fmt(r.rev)}</span></div><div class="inv-card-row"><span class="inv-card-lbl">Profit</span><span class="tok">${fmt(r.prof)}</span></div></div>`).join(''):'<div class="emptyst"><div class="emo">📊</div><p>No sales data yet</p></div>';
+    el.innerHTML=`
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+        <button class="btn bgh bsm" onclick="printReport()">🖨️ Print / Save PDF</button>
+      </div>
+      <div id="printArea">
+        ${rows.length ? rows.map(r=>`
+          <div class="inv-card" style="margin-bottom:8px;">
+            <div class="inv-card-row"><span style="font-weight:700;font-size:14px;">${r.name}</span></div>
+            <div class="inv-card-row"><span class="inv-card-lbl">Qty Sold</span><span><b>${r.qty}</b></span></div>
+            <div class="inv-card-row"><span class="inv-card-lbl">Revenue</span><span><b>${fmt(r.rev)}</b></span></div>
+            <div class="inv-card-row"><span class="inv-card-lbl">Profit</span><span class="tok"><b>${fmt(r.prof)}</b></span></div>
+          </div>`).join('')
+        : '<div class="emptyst"><div class="emo">📊</div><p>No sales data yet</p></div>'}
+      </div>`;
     return;
   }
-  let filtered, label;
-  if(repT==='daily'){ filtered=S.orders.filter(o=>new Date(o.date).toDateString()===now.toDateString()); label='Today — '+now.toLocaleDateString('en-PH',{weekday:'long',month:'long',day:'numeric'}); }
-  else if(repT==='weekly'){ const sw=new Date(now); sw.setDate(sw.getDate()-7); filtered=S.orders.filter(o=>new Date(o.date)>=sw); label='Last 7 Days'; }
-  else { const sm=new Date(now.getFullYear(),now.getMonth(),1); filtered=S.orders.filter(o=>new Date(o.date)>=sm); label=now.toLocaleString('default',{month:'long'})+' '+now.getFullYear(); }
-  const sales=filtered.reduce((s,o)=>s+o.total,0), prof=filtered.reduce((s,o)=>s+o.profit,0);
-  const todE=S.exps.filter(e=>new Date(e.date).toDateString()===now.toDateString()).reduce((s,e)=>s+e.amt,0);
-  const net=prof-todE;
-  el.innerHTML=`<div class="sgrid" style="margin-bottom:14px;">
-    <div class="sc sc-b"><div class="sl">Total Sales</div><div class="sv">${fmt(sales)}</div><div class="ss">${filtered.length} orders</div></div>
-    <div class="sc sc-g"><div class="sl">Gross Profit</div><div class="sv">${fmt(prof)}</div><div class="ss">${sales>0?((prof/sales)*100).toFixed(1)+'% margin':'—'}</div></div>
-    <div class="sc sc-o"><div class="sl">Expenses</div><div class="sv">${fmt(todE)}</div></div>
-    <div class="sc ${net>=0?'sc-g':'sc-o'}"><div class="sl">Net Profit</div><div class="sv ${net>=0?'tok':'trd'}">${fmt(net)}</div></div>
-  </div>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-    <div style="font-size:14px;font-weight:700;">${label}</div>
-    <button class="btn bgh bsm" onclick="window.print()">🖨️ Print</button>
-  </div>
-  ${filtered.length?filtered.reverse().map(o=>`<div class="inv-card" style="margin-bottom:8px;">
-    <div class="inv-card-row"><span style="font-weight:700">${o.id}</span><span style="font-weight:800;color:var(--ac)">${fmt(o.total)}</span></div>
-    <div class="inv-card-row"><span class="inv-card-lbl">${new Date(o.date).toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</span><span class="tok">${fmt(o.profit)} profit</span></div>
-    <div class="inv-card-row"><span class="inv-card-lbl">Payment</span><span class="badge bbl">${o.payment.toUpperCase()}</span></div>
-  </div>`).join(''):'<div class="emptyst"><div class="emo">📋</div><p>No orders for this period</p></div>'}`;
+
+  /* ── Daily / Weekly / Monthly tabs ── */
+  let filtered, label, periodLabel;
+  if(repT==='daily'){
+    filtered=S.orders.filter(o=>new Date(o.date).toDateString()===now.toDateString());
+    label=now.toLocaleDateString('en-PH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    periodLabel='Today';
+  } else if(repT==='weekly'){
+    const sw=new Date(now); sw.setDate(sw.getDate()-7);
+    filtered=S.orders.filter(o=>new Date(o.date)>=sw);
+    label='Last 7 Days';
+    periodLabel='Weekly';
+  } else {
+    const sm=new Date(now.getFullYear(),now.getMonth(),1);
+    filtered=S.orders.filter(o=>new Date(o.date)>=sm);
+    label=now.toLocaleString('default',{month:'long',year:'numeric'});
+    periodLabel='Monthly';
+  }
+
+  const sales = filtered.reduce((s,o)=>s+o.total,0);
+  const prof  = filtered.reduce((s,o)=>s+o.profit,0);
+  const expsTotal = S.exps.reduce((s,e)=>{
+    const ed=new Date(e.date);
+    if(repT==='daily' && ed.toDateString()===now.toDateString()) return s+e.amt;
+    if(repT==='weekly'){ const sw=new Date(now); sw.setDate(sw.getDate()-7); return ed>=sw?s+e.amt:s; }
+    if(repT==='monthly'){ const sm=new Date(now.getFullYear(),now.getMonth(),1); return ed>=sm?s+e.amt:s; }
+    return s;
+  },0);
+  const net=prof-expsTotal;
+
+  el.innerHTML=`
+    <div id="printArea">
+      <div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd);">
+        <div style="font-size:18px;font-weight:900;">${S.cfg.name}</div>
+        <div style="font-size:13px;color:var(--t2);margin-top:4px;">${periodLabel} Report — ${label}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px;">Generated: ${now.toLocaleString('en-PH')}</div>
+      </div>
+      <div class="sgrid" style="margin-bottom:14px;">
+        <div class="sc sc-b"><div class="sl">Total Sales</div><div class="sv">${fmt(sales)}</div><div class="ss">${filtered.length} orders</div></div>
+        <div class="sc sc-g"><div class="sl">Gross Profit</div><div class="sv">${fmt(prof)}</div><div class="ss">${sales>0?((prof/sales)*100).toFixed(1)+'% margin':'—'}</div></div>
+        <div class="sc sc-o"><div class="sl">Expenses</div><div class="sv">${fmt(expsTotal)}</div></div>
+        <div class="sc ${net>=0?'sc-g':'sc-o'}"><div class="sl">Net Profit</div><div class="sv ${net>=0?'tok':'trd'}">${fmt(net)}</div></div>
+      </div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Order Details</div>
+      ${filtered.length ? [...filtered].reverse().map(o=>`
+        <div class="inv-card" style="margin-bottom:8px;">
+          <div class="inv-card-row">
+            <span style="font-weight:800;">${o.id}</span>
+            <span style="font-weight:800;color:var(--ac);">${fmt(o.total)}</span>
+          </div>
+          <div class="inv-card-row">
+            <span class="inv-card-lbl">${new Date(o.date).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+            <span class="tok">${fmt(o.profit)} profit</span>
+          </div>
+          <div class="inv-card-row">
+            <span class="inv-card-lbl">Customer: ${o.customer}</span>
+            <span class="badge bbl">${o.payment.toUpperCase()}</span>
+          </div>
+        </div>`).join('')
+      : '<div class="emptyst"><div class="emo">📋</div><p>No orders for this period</p></div>'}
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn bp" style="width:100%;" onclick="printReport()">🖨️ Print / Save as PDF</button>
+    </div>`;
 }
 
-/* ── CATALOG ── */
+/* ── Print report — opens a clean printable window ── */
+function printReport(){
+  const area = g('printArea');
+  if(!area){ toast('Nothing to print yet','warn'); return; }
+
+  const now = new Date();
+  const rows = area.querySelectorAll('.inv-card');
+  // Build a plain text table for print
+  let tableRows = '';
+  rows.forEach(card=>{
+    const cells = card.querySelectorAll('.inv-card-row');
+    cells.forEach(row=>{
+      const spans = row.querySelectorAll('span');
+      if(spans.length===2) tableRows += `<tr><td>${spans[0].textContent}</td><td style="text-align:right;font-weight:600;">${spans[1].textContent}</td></tr>`;
+    });
+    tableRows += `<tr><td colspan="2" style="border-bottom:1px solid #ddd;padding:2px 0;"></td></tr>`;
+  });
+
+  // Get summary numbers from stat cards
+  const svs = area.querySelectorAll('.sv');
+  const sls = area.querySelectorAll('.sl');
+  let summaryRows = '';
+  svs.forEach((sv,i)=>{
+    if(sls[i]) summaryRows += `<tr><td><b>${sls[i].textContent}</b></td><td style="text-align:right;font-size:18px;font-weight:900;">${sv.textContent}</td></tr>`;
+  });
+
+  const titleEl = area.querySelector('[style*="font-size:18px"]');
+  const subEl   = area.querySelector('[style*="font-size:13px"]');
+  const title   = titleEl ? titleEl.textContent : S.cfg.name;
+  const sub     = subEl   ? subEl.textContent   : '';
+
+  const html = `<!DOCTYPE html><html><head>
+  <meta charset="UTF-8">
+  <title>${title} — Report</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; font-size:13px; padding:24px; color:#111; }
+    h1  { font-size:20px; font-weight:900; margin-bottom:4px; }
+    .sub{ color:#666; font-size:12px; margin-bottom:20px; }
+    table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+    th  { background:#f0f0f0; padding:8px 12px; text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+    td  { padding:7px 12px; border-bottom:1px solid #eee; vertical-align:top; }
+    .summary td { font-size:15px; padding:10px 12px; }
+    .footer { margin-top:24px; font-size:11px; color:#999; text-align:center; border-top:1px solid #eee; padding-top:12px; }
+    @media print { body { padding:12px; } }
+  </style>
+  </head><body>
+  <h1>${title}</h1>
+  <div class="sub">${sub} &nbsp;·&nbsp; Printed: ${now.toLocaleString('en-PH')}</div>
+  ${summaryRows ? `<table class="summary"><thead><tr><th>Summary</th><th style="text-align:right">Amount</th></tr></thead><tbody>${summaryRows}</tbody></table>` : ''}
+  ${tableRows ? `<table><thead><tr><th>Detail</th><th style="text-align:right">Value</th></tr></thead><tbody>${tableRows}</tbody></table>` : ''}
+  <div class="footer">NJN Sari-Sari Store POS v2.0 &nbsp;·&nbsp; ${S.cfg.addr} &nbsp;·&nbsp; ${S.cfg.phone}</div>
+  </body></html>`;
+
+  const w = window.open('', '_blank', 'width=700,height=900');
+  if(!w){ toast('Pop-up blocked! Please allow pop-ups for this site and try again.','warn'); return; }
+  w.document.write(html);
+  w.document.close();
+  // Small delay so styles load before print dialog opens
+  setTimeout(()=>{ w.focus(); w.print(); }, 400);
+}
+
+/* ══════════════════════════════════════
+   CATALOG  — with share options
+══════════════════════════════════════ */
 function renderCat(){
   const el=g('catGrid'); if(!el) return;
-  el.innerHTML=S.prods.map(p=>`<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;text-align:center;">
-    <div style="font-size:36px;margin-bottom:10px;">${p.em}</div>
-    <div style="font-size:13px;font-weight:700;margin-bottom:4px;">${p.name}</div>
-    <div style="font-size:11px;color:var(--t2);margin-bottom:8px;">${p.cat} · per ${p.unit}</div>
-    <div style="font-size:20px;font-weight:900;color:var(--ac);">${fmt(p.price)}</div>
-    <div style="font-size:11px;margin-top:6px;" class="${p.stock>0?'tok':'trd'}">${p.stock>0?'✅ Available':'❌ Out of stock'}</div>
-  </div>`).join('');
+  el.innerHTML=S.prods.map(p=>`
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;text-align:center;display:flex;flex-direction:column;align-items:center;">
+      <div style="font-size:38px;margin-bottom:10px;">${p.em}</div>
+      <div style="font-size:14px;font-weight:800;margin-bottom:4px;">${p.name}</div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:10px;">${p.cat} · per ${p.unit}</div>
+      <div style="font-size:22px;font-weight:900;color:var(--ac);margin-bottom:8px;">${fmt(p.price)}</div>
+      <div style="font-size:12px;margin-bottom:12px;" class="${p.stock>0?'tok':'trd'}">${p.stock>0?'✅ Available':'❌ Out of stock'}</div>
+      <button class="btn bgh bsm" style="width:100%;" onclick="shareProduct(${p.id})">📤 Share</button>
+    </div>`).join('');
+}
+
+/* Share a single product */
+async function shareProduct(id){
+  const p = S.prods.find(x=>x.id===id);
+  if(!p) return;
+  const text = `${p.em} *${p.name}*\nPrice: *${fmt(p.price)}* per ${p.unit}\nCategory: ${p.cat}\n${p.stock>0?'✅ Available':'❌ Out of stock'}\n\n📍 ${S.cfg.name}\n📞 ${S.cfg.phone}`;
+
+  // Try native Web Share API (works on mobile — iOS Safari, Android Chrome)
+  if(navigator.share){
+    try {
+      await navigator.share({ title: p.name + ' — ' + S.cfg.name, text });
+      return;
+    } catch(e){ /* user cancelled or not supported */ }
+  }
+  // Fallback: show share options modal
+  _showShareOptions(p, text);
+}
+
+/* Share the whole catalog */
+async function shareCatalog(){
+  const lines = S.prods.filter(p=>p.stock>0).map(p=>`${p.em} ${p.name} — ${fmt(p.price)} / ${p.unit}`);
+  const text = `🛍️ *${S.cfg.name} — Price List*\n\n${lines.join('\n')}\n\n📞 ${S.cfg.phone}\n📍 ${S.cfg.addr}`;
+  if(navigator.share){
+    try { await navigator.share({ title: S.cfg.name + ' Price List', text }); return; } catch(e){}
+  }
+  _showShareOptions(null, text);
+}
+
+function _showShareOptions(p, text){
+  const encoded = encodeURIComponent(text);
+  const waUrl   = 'https://wa.me/?text=' + encoded;
+  const fbUrl   = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(window.location.href) + '&quote=' + encoded;
+  const mailUrl = 'mailto:?subject=' + encodeURIComponent((p?p.name:S.cfg.name)+' — Price') + '&body=' + encoded;
+
+  // Build inline share panel
+  const modal = document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  modal.innerHTML=`
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 20px 32px;animation:slideUp .25s ease;">
+      <div style="width:40px;height:4px;background:var(--bd);border-radius:4px;margin:0 auto 18px;"></div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:16px;">📤 Share ${p?p.name:'Catalog'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <a href="${waUrl}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#25D366;color:#fff;padding:14px;border-radius:var(--rs);font-weight:700;font-size:14px;text-decoration:none;">📱 WhatsApp</a>
+        <a href="${fbUrl}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#1877F2;color:#fff;padding:14px;border-radius:var(--rs);font-weight:700;font-size:14px;text-decoration:none;">📘 Facebook</a>
+        <a href="${mailUrl}" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--s2);border:1.5px solid var(--bd);color:var(--tx);padding:14px;border-radius:var(--rs);font-weight:700;font-size:14px;text-decoration:none;">📧 Email</a>
+        <button onclick="navigator.clipboard.writeText(decodeURIComponent('${encoded}')).then(()=>{this.textContent='✅ Copied!';setTimeout(()=>this.textContent='📋 Copy Text',1800)})" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--s2);border:1.5px solid var(--bd);color:var(--tx);padding:14px;border-radius:var(--rs);font-weight:700;font-size:14px;">📋 Copy Text</button>
+      </div>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;background:none;border:1.5px solid var(--bd);color:var(--t2);padding:13px;border-radius:var(--rs);font-size:14px;font-weight:600;">Cancel</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
 }
 
 /* ── SETTINGS ── */
@@ -1519,63 +1715,227 @@ function changePass(){
   S.cfg.pw=nw; toast('Password updated! ✅','success'); g('cp').value=''; g('np').value='';
 }
 
-/* ── CAMERA SCANNER ── */
-function openCam(){ S.camMode='pos'; openMod('mCam'); resetCamUI(); }
-function openCamProd(){ S.camMode='prod'; openMod('mCam'); resetCamUI(); }
-function resetCamUI(){ g('camSt').textContent='Tap "Start Camera" to begin'; g('camRes').style.display='none'; g('camBtn').textContent='📷 Start Camera'; g('camBtn').disabled=false; g('mbCode').value=''; }
+/* ══════════════════════════════════════
+   CAMERA SCANNER
+   Modes:
+     'pos'   — scan to add to cart
+     'prod'  — scan to fill barcode field in Add/Edit Product
+     'inv'   — scan to find & highlight product in Inventory
+              (also offers quick delete)
+══════════════════════════════════════ */
+
+const CAM_LABELS = {
+  pos:  '🛒 Scan to add product to cart',
+  prod: '📦 Scan to fill in the barcode field',
+  inv:  '🔍 Scan to find or delete a product'
+};
+
+function openCam()    { S.camMode='pos';  _openCamModal(); }
+function openCamProd(){ S.camMode='prod'; _openCamModal(); }
+function openCamInv() { S.camMode='inv';  _openCamModal(); }
+
+function _openCamModal(){
+  // Update title and mode label
+  const titles = { pos:'📷 POS Scanner', prod:'📷 Add Product — Scan Barcode', inv:'📷 Inventory — Scan to Find / Delete' };
+  g('camTitle').textContent = titles[S.camMode] || '📷 Barcode Scanner';
+  g('camModeTag').textContent = CAM_LABELS[S.camMode] || '';
+  resetCamUI();
+  openMod('mCam');
+}
+
+function resetCamUI(){
+  g('camSt').textContent = 'Tap "Start Camera" to begin scanning';
+  g('camRes').style.display = 'none';
+  g('camNote').style.display = 'none';
+  g('camBtn').textContent  = '📷 Start Camera';
+  g('camBtn').disabled     = false;
+  g('mbCode').value        = '';
+}
 
 async function startCam(){
   if(S.camActive) return;
-  const btn=g('camBtn'); btn.textContent='⏳ Starting…'; btn.disabled=true;
-  g('camSt').textContent='Requesting camera permission…';
+  const btn = g('camBtn');
+  btn.textContent = '⏳ Starting camera…'; btn.disabled = true;
+  g('camSt').textContent = 'Requesting camera permission…';
+  g('camNote').style.display = 'none';
+
+  // Check if getUserMedia is available at all
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    _camFail('Camera API not available on this browser. Use manual entry below.');
+    return;
+  }
+
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    // Try rear camera first, fall back to any camera
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 }, height:{ ideal:720 } },
+        audio:false
+      });
+    } catch(e){
+      stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+    }
+
     S.camStream = stream; S.camActive = true;
-    const vid=g('camVid'); vid.srcObject=stream; await vid.play();
-    g('camSt').textContent='📷 Hold camera steady over barcode…';
-    btn.textContent='🔴 Scanning…'; btn.disabled=true;
-    detectBarcode(vid);
+    const vid = g('camVid');
+    vid.srcObject = stream;
+    await vid.play();
+    g('camSt').textContent = '📷 Hold camera steady over the barcode…';
+    btn.textContent = '🔴 Scanning — please wait…'; btn.disabled = true;
+    _detectLoop(vid);
   } catch(err){
-    g('camSt').textContent='❌ Camera access denied. Please use manual entry below.';
-    btn.textContent='📷 Start Camera'; btn.disabled=false;
-    toast('Camera not available — try manual entry','warn');
+    let msg = '❌ Camera access denied.';
+    if(err.name === 'NotAllowedError')  msg = '❌ Camera permission denied. Please allow camera access in your browser settings, then try again.';
+    if(err.name === 'NotFoundError')    msg = '❌ No camera found on this device.';
+    if(err.name === 'NotReadableError') msg = '❌ Camera is in use by another app. Close it and try again.';
+    _camFail(msg);
   }
 }
 
-async function detectBarcode(vid){
+function _camFail(msg){
+  g('camSt').textContent = msg;
+  g('camBtn').textContent = '📷 Start Camera'; g('camBtn').disabled = false;
+  // Show browser tip
+  const note = g('camNote');
+  note.innerHTML = '💡 <b>Tips:</b><br>• iPhone/iPad: use <b>Safari</b> browser<br>• Android: use <b>Chrome</b> browser<br>• Make sure you tap "Allow" when asked for camera permission<br>• Or just type the barcode number in the field below';
+  note.style.display = 'block';
+}
+
+async function _detectLoop(vid){
+  // Method 1: Native BarcodeDetector API (Chrome on Android, Chrome desktop, Edge)
   if('BarcodeDetector' in window){
-    let fmts=[]; try{ fmts=await BarcodeDetector.getSupportedFormats(); }catch(e){}
-    const det=new BarcodeDetector({formats:fmts.length?fmts:['code_128','ean_13','ean_8','qr_code','upc_a']});
-    const loop=async()=>{
-      if(!S.camActive||!S.camStream) return;
-      try{ const codes=await det.detect(vid); if(codes&&codes.length){ handleCode(codes[0].rawValue); return; } }catch(e){}
+    let fmts = [];
+    try { fmts = await BarcodeDetector.getSupportedFormats(); } catch(e){}
+    const useFmts = fmts.length
+      ? fmts
+      : ['code_128','code_39','ean_13','ean_8','upc_a','upc_e','qr_code','itf'];
+    const det = new BarcodeDetector({ formats: useFmts });
+    let lastCode = '', lastTime = 0;
+    const loop = async () => {
+      if(!S.camActive || !S.camStream) return;
+      try {
+        const codes = await det.detect(vid);
+        if(codes && codes.length > 0){
+          const code = codes[0].rawValue;
+          // Debounce — don't fire same code twice within 2 seconds
+          if(code === lastCode && Date.now() - lastTime < 2000){ requestAnimationFrame(loop); return; }
+          lastCode = code; lastTime = Date.now();
+          handleCode(code); return;
+        }
+      } catch(e){}
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
-  } else {
-    g('camSt').textContent='⚠️ Auto-scan not supported on this browser.\nPlease use manual entry below, or try Chrome.';
-    const btn=g('camBtn'); btn.textContent='📷 Start Camera'; btn.disabled=false;
+    return;
+  }
+
+  // Method 2: Canvas snapshot + fetch to open-source barcode API (works on iOS Safari)
+  // We periodically grab a frame and try to decode via zxing-js WASM endpoint
+  if(typeof window.ZXing !== 'undefined'){
+    // ZXing loaded externally
+    try {
+      const reader = new ZXing.BrowserMultiFormatReader();
+      reader.decodeFromVideoDevice(null, 'camVid', (result, err) => {
+        if(result && S.camActive) handleCode(result.getText());
+      });
+      S._zxReader = reader;
+      return;
+    } catch(e){}
+  }
+
+  // Method 3: Canvas + quagga-style — inform user and fall back gracefully
+  g('camSt').textContent = '⚠️ Auto-scan not supported on this browser. Please type the barcode below.';
+  const note = g('camNote');
+  note.innerHTML = '💡 <b>For auto-scan:</b> Open this page in <b>Chrome</b> (Android) or <b>Safari</b> (iPhone/iPad iOS 17+).<br>Or just type/paste the barcode number in the field below — it works just as well!';
+  note.style.display = 'block';
+  g('camBtn').textContent = '📷 Start Camera'; g('camBtn').disabled = false;
+}
+
+/* ── HANDLE SCANNED / TYPED CODE ── */
+function handleCode(code){
+  if(!code || !code.trim()) return;
+  code = code.trim();
+
+  // ── POS mode: add to cart ──
+  if(S.camMode === 'pos'){
+    stopCam();
+    const p = S.prods.find(x => x.bc === code || String(x.id) === code);
+    if(p){ addToCart(p.id); toast('✅ Added: ' + p.name, 'success'); }
+    else  { toast('No product found for barcode: ' + code, 'warn'); }
+    return;
+  }
+
+  // ── PROD mode: fill barcode field in Add/Edit product form ──
+  if(S.camMode === 'prod'){
+    stopCam();
+    // Try to auto-fill name if product with this barcode already exists
+    const existing = S.prods.find(x => x.bc === code);
+    g('pB').value = code;
+    if(existing){
+      toast('⚠️ This barcode belongs to: ' + existing.name, 'warn');
+    } else {
+      toast('✅ Barcode scanned: ' + code, 'success');
+    }
+    return;
+  }
+
+  // ── INV mode: find product and show options ──
+  if(S.camMode === 'inv'){
+    stopCam();
+    const p = S.prods.find(x => x.bc === code || String(x.id) === code);
+    if(!p){
+      toast('No product found for barcode: ' + code, 'warn');
+      // Offer to add as new product
+      if(confirm('No product found for barcode:\n"' + code + '"\n\nDo you want to ADD this as a new product?')){
+        openAddProd();
+        setTimeout(() => { g('pB').value = code; }, 100);
+      }
+      return;
+    }
+    // Found — show action dialog
+    _showInvScanResult(p);
   }
 }
-function handleCode(code){
-  if(!code) return;
-  stopCam();
-  if(S.camMode==='prod'){ g('pB').value=code; toast('Barcode: '+code,'success'); return; }
-  const p=S.prods.find(x=>x.bc===code||String(x.id)===code);
-  if(p){ addToCart(p.id); toast('✅ Added: '+p.name,'success'); }
-  else { toast('Product not found: '+code,'warn'); }
+
+function _showInvScanResult(p){
+  // Build a nice modal-style confirm
+  const action = confirm(
+    '✅ Product Found!\n\n' +
+    p.em + ' ' + p.name + '\n' +
+    'Price: ₱' + p.price.toFixed(2) + '\n' +
+    'Stock: ' + p.stock + ' ' + p.unit + '\n\n' +
+    'Press OK to EDIT this product\nPress Cancel to DELETE it'
+  );
+  if(action){
+    // Edit
+    editProd(p.id);
+    toast('Opening: ' + p.name, 'info');
+  } else {
+    // Confirm delete
+    if(confirm('⚠️ DELETE "' + p.name + '"?\nThis cannot be undone.')){
+      S.prods = S.prods.filter(x => x.id !== p.id);
+      renderInv(); refreshDash();
+      toast('🗑 Deleted: ' + p.name, 'danger');
+    }
+  }
 }
+
 function doManual(){
-  const code=g('mbCode').value.trim(); if(!code){toast('Enter a barcode','warn');return;}
+  const code = g('mbCode').value.trim();
+  if(!code){ toast('Please enter a barcode number', 'warn'); return; }
   handleCode(code);
 }
+
 function stopCam(){
-  S.camActive=false;
-  if(S.camStream){ S.camStream.getTracks().forEach(t=>t.stop()); S.camStream=null; }
-  const vid=g('camVid'); if(vid) vid.srcObject=null;
+  S.camActive = false;
+  if(S.camStream){ S.camStream.getTracks().forEach(t => t.stop()); S.camStream = null; }
+  if(S._zxReader){ try{ S._zxReader.reset(); }catch(e){} S._zxReader = null; }
+  const vid = g('camVid'); if(vid) vid.srcObject = null;
   closeMod('mCam');
 }
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopCam(); });
+
+document.addEventListener('visibilitychange', () => { if(document.hidden) stopCam(); });
 
 /* ── CLAUDE ── */
 function showClaude(){ g('clResp').style.display='none'; g('clQ').value=''; openMod('mClaude'); }
