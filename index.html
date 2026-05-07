@@ -448,6 +448,7 @@ tbody tr:active { background:rgba(255,255,255,.03); }
 .sfr { position:absolute; inset:18%; border:2px solid var(--g); border-radius:8px; box-shadow:0 0 0 2000px rgba(0,0,0,.5); }
 .sln { position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--g),transparent); animation:scanY 2s linear infinite; }
 @keyframes scanY { 0%{top:0} 100%{top:100%} }
+@keyframes spin { to{transform:rotate(360deg)} }
 .cam-st { text-align:center; font-size:13px; color:var(--t2); margin-top:10px; min-height:20px; line-height:1.4; }
 .cam-res { text-align:center; padding:10px 14px; border-radius:var(--rs); margin-top:8px; font-size:14px; font-weight:600; display:none; }
 .cam-res.ok  { background:rgba(46,213,115,.15); color:var(--ok); }
@@ -836,12 +837,28 @@ tbody tr:active { background:rgba(255,255,255,.03); }
       <div class="mtit" id="camTitle">📷 Barcode Scanner</div>
       <button class="mxbtn" onclick="stopCam()">✕</button>
     </div>
-    <div class="mbody">
-      <div id="camModeTag" style="background:rgba(61,127,255,.12);border:1px solid rgba(61,127,255,.25);border-radius:var(--rs);padding:9px 14px;font-size:13px;font-weight:600;color:var(--ac);margin-bottom:12px;text-align:center;"></div>
-      <div id="camBox"><video id="camVid" autoplay playsinline muted></video><div class="sfr"><div class="sln"></div></div></div>
-      <div class="cam-st" id="camSt">Tap "Start Camera" to begin</div>
+    <div class="mbody" style="padding-top:10px;">
+      <div id="camModeTag" style="background:rgba(61,127,255,.12);border:1px solid rgba(61,127,255,.25);border-radius:var(--rs);padding:8px 14px;font-size:13px;font-weight:600;color:var(--ac);margin-bottom:10px;text-align:center;"></div>
+      <div id="camBox" style="position:relative;width:100%;background:#000;border-radius:var(--rs);overflow:hidden;aspect-ratio:4/3;">
+        <video id="camVid" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+          <div style="width:68%;height:38%;border:2.5px solid var(--g);border-radius:10px;box-shadow:0 0 0 2000px rgba(0,0,0,.45);position:relative;overflow:hidden;">
+            <div style="position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--g),transparent);animation:scanY 1.4s ease-in-out infinite;"></div>
+          </div>
+        </div>
+        <button id="camFlipBtn" onclick="flipCamera()" style="display:none;position:absolute;top:10px;right:10px;background:rgba(0,0,0,.55);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:50%;width:44px;height:44px;font-size:20px;align-items:center;justify-content:center;">🔄</button>
+        <div id="camSpinner" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#fff;font-size:13px;text-align:center;padding:16px;">
+          <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;"></div>
+          <span id="camSpinText">Starting camera…</span>
+        </div>
+      </div>
+      <div class="cam-st" id="camSt" style="margin-top:8px;min-height:18px;text-align:center;"></div>
       <div class="cam-res" id="camRes"></div>
-      <button class="btn bp" style="width:100%;margin-top:10px;" id="camBtn" onclick="startCam()">📷 Start Camera</button>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="btn bp" style="flex:1;" id="camBtn" onclick="startCam()">📷 Start Camera</button>
+        <button class="btn bgh" id="camFaceBtn" onclick="toggleFacing()" style="display:none;flex-shrink:0;padding:12px 14px;font-size:18px;" title="Switch camera">🔄</button>
+      </div>
+      <div id="camHint" style="text-align:center;font-size:11px;color:var(--t3);margin-top:6px;">Back camera recommended for faster scanning</div>
       <div style="border-top:1px solid var(--bd);padding-top:14px;margin-top:14px;">
         <div class="ig" style="margin-bottom:0;">
           <label>Or type / paste barcode manually</label>
@@ -853,7 +870,7 @@ tbody tr:active { background:rgba(255,255,255,.03); }
           </div>
         </div>
       </div>
-      <div id="camNote" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.2);border-radius:var(--rs);font-size:12px;color:var(--yw);line-height:1.5;"></div>
+      <div id="camNote" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.2);border-radius:var(--rs);font-size:12px;color:var(--yw);line-height:1.6;"></div>
     </div>
   </div>
 </div>
@@ -864,27 +881,84 @@ tbody tr:active { background:rgba(255,255,255,.03); }
     <div class="mhnd"></div>
     <div class="mhd"><div class="mtit" id="pmT">Add Product</div><button class="mxbtn" onclick="closeMod('mProd')">✕</button></div>
     <div class="mbody">
+
+      <!-- Barcode scan row at top for quick lookup -->
+      <div class="ig">
+        <label>Barcode / SKU — Scan to auto-fill ✨</label>
+        <div style="display:flex;gap:8px;">
+          <input id="pB" placeholder="Scan or type barcode…" autocomplete="off" autocorrect="off" style="flex:1;" oninput="onBarcodeTyped(this.value)">
+          <button class="btn bp bsm" onclick="openCamProd()" style="flex-shrink:0;min-width:52px;">📷</button>
+        </div>
+        <div id="bcLookupStatus" style="font-size:11px;color:var(--t2);margin-top:5px;min-height:16px;"></div>
+      </div>
+
+      <!-- Auto-fill banner -->
+      <div id="autoFillBanner" style="display:none;background:rgba(46,213,115,.1);border:1px solid rgba(46,213,115,.3);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;">
+        ✅ <b>Product found online!</b> Name, category and expiry have been filled in.<br>
+        <span style="color:var(--t2);">Just add the cost price, markup, and stock quantity.</span>
+      </div>
+
       <div class="ig"><label>Product Name *</label><input id="pN" placeholder="e.g. Sky Flakes" autocomplete="off"></div>
       <div class="ig"><label>Emoji (icon)</label><input id="pE" value="📦" placeholder="📦"></div>
       <div class="ig"><label>Category</label>
         <select id="pCat"><option>Food &amp; Snacks</option><option>Beverages</option><option>Personal Care</option><option>Condiments</option><option>Canned Goods</option><option>Household</option><option>Other</option></select>
       </div>
-      <div class="ig"><label>Unit</label>
-        <select id="pUn"><option>piece</option><option>pack</option><option>bottle</option><option>can</option><option>sachet</option><option>kg</option><option>liter</option></select>
-      </div>
-      <div class="ig"><label>Cost Price (₱) *</label><input type="number" id="pC" placeholder="0.00" oninput="calcP()" inputmode="decimal"></div>
-      <div class="ig"><label>Markup (%)</label><input type="number" id="pM" value="20" oninput="calcP()" inputmode="decimal"></div>
-      <div class="ig"><label>Selling Price (₱) — auto-calculated</label><input type="number" id="pSP" style="border-color:var(--ac);" inputmode="decimal"></div>
-      <div class="pprev" id="pprev" style="display:none;"></div>
-      <div class="ig">
-        <label>Barcode / SKU</label>
-        <div style="display:flex;gap:8px;">
-          <input id="pB" placeholder="Optional" autocomplete="off" autocorrect="off" style="flex:1;">
-          <button class="btn bgh bsm" onclick="openCamProd()" style="flex-shrink:0;">📷 Scan</button>
+
+      <!-- BUYING UNIT (how you buy it) -->
+      <div style="background:rgba(61,127,255,.07);border:1px solid rgba(61,127,255,.18);border-radius:var(--rs);padding:14px;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">📦 Buying (How you purchase it)</div>
+        <div class="ig" style="margin-bottom:10px;"><label>Buy Unit</label>
+          <select id="pBuyUnit"><option>piece</option><option>pack</option><option>box</option><option>bottle</option><option>can</option><option>sachet</option><option>kg</option><option>liter</option><option>dozen</option><option>case</option></select>
+        </div>
+        <div class="ig" style="margin-bottom:0;"><label>Cost Price per Buy Unit (₱) *</label>
+          <input type="number" id="pC" placeholder="e.g. 25.00 per pack" oninput="calcP()" inputmode="decimal">
         </div>
       </div>
-      <div class="ig"><label>Stock Quantity</label><input type="number" id="pSt" value="0" inputmode="numeric"></div>
-      <div class="ig"><label>Min Stock Alert</label><input type="number" id="pMS" value="5" inputmode="numeric"></div>
+
+      <!-- SELLING UNIT (how you sell it) + pack split toggle -->
+      <div style="background:rgba(0,212,170,.07);border:1px solid rgba(0,212,170,.18);border-radius:var(--rs);padding:14px;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">🏷️ Selling (How you sell to customers)</div>
+        <div class="ig" style="margin-bottom:10px;"><label>Sell Unit</label>
+          <select id="pUn" onchange="toggleSplitUI()"><option>piece</option><option>pack</option><option>box</option><option>bottle</option><option>can</option><option>sachet</option><option>kg</option><option>liter</option></select>
+        </div>
+
+        <!-- Pack-split toggle -->
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 0;border-top:1px solid rgba(0,212,170,.15);">
+          <div style="position:relative;flex-shrink:0;">
+            <input type="checkbox" id="pSplitToggle" onchange="toggleSplitUI()" style="position:absolute;opacity:0;width:0;height:0;">
+            <div id="pSplitTrack" style="width:44px;height:26px;background:var(--s3);border-radius:13px;transition:background .2s;position:relative;">
+              <div id="pSplitThumb" style="position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.3);"></div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Sell in pieces from a pack</div>
+            <div style="font-size:11px;color:var(--t2);">e.g. buy 1 pack of candies, sell each piece separately</div>
+          </div>
+        </label>
+
+        <!-- Split fields (shown when toggle is ON) -->
+        <div id="splitFields" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,212,170,.15);">
+          <div class="ig" style="margin-bottom:10px;">
+            <label>Pieces per Pack</label>
+            <input type="number" id="pPcsPerPack" value="10" inputmode="numeric" oninput="calcP()" placeholder="e.g. 10 pieces per pack">
+          </div>
+          <div style="background:rgba(0,212,170,.08);border-radius:var(--rs);padding:10px 12px;font-size:12px;color:var(--t2);" id="splitCalcHint"></div>
+        </div>
+      </div>
+
+      <div class="ig"><label>Markup (%)</label><input type="number" id="pM" value="20" oninput="calcP()" inputmode="decimal"></div>
+      <div class="ig"><label>Selling Price per <span id="pSellUnitLabel">piece</span> (₱) — auto-calculated</label>
+        <input type="number" id="pSP" style="border-color:var(--ac);" inputmode="decimal" oninput="onManualPrice()">
+      </div>
+      <div class="pprev" id="pprev" style="display:none;"></div>
+
+      <div class="ig"><label>Stock (in <span id="pStockUnitLabel">pieces</span>)</label>
+        <input type="number" id="pSt" value="0" inputmode="numeric" oninput="calcStockHint()">
+        <div id="stockHint" style="font-size:11px;color:var(--t2);margin-top:5px;min-height:16px;"></div>
+      </div>
+      <div class="ig"><label>Min Stock Alert (in <span id="pMinUnitLabel">pieces</span>)</label>
+        <input type="number" id="pMS" value="5" inputmode="numeric">
+      </div>
       <div class="ig"><label>Expiry Date</label><input type="date" id="pEx"></div>
     </div>
     <div class="mfoot"><button class="btn bgh" onclick="closeMod('mProd')">Cancel</button><button class="btn bp" onclick="saveProd()">Save Product</button></div>
@@ -1017,7 +1091,7 @@ tbody tr:active { background:rgba(255,255,255,.03); }
 const S = {
   cfg:{name:'NJN Sari-Sari Store',addr:'Barangay, City, Province',phone:'09XX-XXX-XXXX',owner:'Store Owner',mkup:20,low:5,expw:7,footer:'Thank you! Come again! 😊',pw:'njn2024'},
   prods:[
-    {id:1,name:'Lucky Me Pancit Canton',em:'🍜',cat:'Food & Snacks',unit:'pack',cost:8,mkup:25,price:10,stock:50,min:10,bc:'LM001',exp:'2025-12-31'},
+    {id:1,name:'Lucky Me Pancit Canton',em:'🍜',cat:'Food & Snacks',unit:'pack',buyUnit:'pack',cost:8,mkup:25,price:10,stock:50,min:10,bc:'LM001',exp:'2025-12-31',pcsPerPack:1,isSplit:false},
     {id:2,name:'Coca-Cola 1.5L',em:'🥤',cat:'Beverages',unit:'bottle',cost:55,mkup:18,price:65,stock:24,min:6,bc:'CC001',exp:'2025-09-15'},
     {id:3,name:'Safeguard Soap',em:'🧼',cat:'Personal Care',unit:'piece',cost:38,mkup:21,price:46,stock:3,min:5,bc:'SG001',exp:''},
     {id:4,name:'Chippy Corn Chips',em:'🌽',cat:'Food & Snacks',unit:'pack',cost:10,mkup:20,price:12,stock:30,min:8,bc:'CP001',exp:'2025-08-20'},
@@ -1170,6 +1244,7 @@ function renderPOS(){
     <div class="pn">${p.name}</div>
     <div class="pp">${fmt(p.price)}</div>
     <div class="pst">${p.stock<=0?'Out of stock':p.stock+' '+p.unit+(p.stock<=p.min?' ⚠️':'')}</div>
+    ${p.isSplit&&p.pcsPerPack>1?`<div class="pst" style="color:var(--yw)">📦÷${p.pcsPerPack}pcs</div>`:''}
   </div>`).join('') : `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--t3);">No products found</div>`;
   const gd = g('posGridDesk'); if(gd) gd.innerHTML = html;
   const gm = g('posGridMob'); if(gm) gm.innerHTML = html;
@@ -1323,6 +1398,7 @@ function renderInv(){
         <div class="inv-card-row"><span class="inv-card-lbl">Markup</span><span class="badge bbl">${p.mkup}%</span></div>
         <div class="inv-card-row"><span class="inv-card-lbl">Selling Price</span><span style="font-weight:800;font-size:15px;color:var(--ac);">${fmt(p.price)}</span></div>
         <div class="inv-card-row"><span class="inv-card-lbl">Stock</span><span>${sb}</span></div>
+        ${p.isSplit && p.pcsPerPack>1 ? `<div class="inv-card-row"><span class="inv-card-lbl">Pack Split</span><span class="badge bbl">1 ${p.buyUnit||'pack'} = ${p.pcsPerPack} ${p.unit}s</span></div>` : ''}
         <div class="inv-card-row"><span class="inv-card-lbl">Expiry</span><span>${eb}</span></div>
         <div class="inv-card-btns">
           <button class="btn bgh bsm" onclick="editProd(${p.id})">✏️ Edit</button>
@@ -1338,30 +1414,144 @@ function renderInv(){
       const ex=p.exp?new Date(p.exp):null, ds=ex?Math.ceil((ex-now)/864e5):null;
       const eb=!ex?'<span class="badge bgr">N/A</span>':ds<0?'<span class="badge bbd">Expired</span>':ds<=7?`<span class="badge bwn">${ds}d</span>`:`<span class="badge bok">${p.exp}</span>`;
       const sb=p.stock<=0?'<span class="badge bbd">Out</span>':p.stock<=p.min?`<span class="badge bwn">${p.stock} ⚠️</span>`:`<span class="badge bok">${p.stock}</span>`;
-      return `<tr><td><b>${p.em} ${p.name}</b><br><small style="color:var(--t3)">${p.cat}·${p.bc||'–'}</small></td><td>${fmt(p.cost)}</td><td><span class="badge bbl">${p.mkup}%</span></td><td><b>${fmt(p.price)}</b></td><td>${sb}</td><td>${eb}</td><td style="white-space:nowrap"><button class="btn bgh bsm" onclick="editProd(${p.id})" style="margin-right:4px">✏️</button><button class="btn bd2 bsm" onclick="delProd(${p.id})">🗑</button></td></tr>`;
+      return `<tr><td><b>${p.em} ${p.name}</b><br><small style="color:var(--t3)">${p.cat}·${p.bc||'–'}${p.isSplit&&p.pcsPerPack>1?' · 1 '+(p.buyUnit||'pack')+'='+p.pcsPerPack+'pcs':''}</small></td><td>${fmt(p.cost)}</td><td><span class="badge bbl">${p.mkup}%</span></td><td><b>${fmt(p.price)}</b></td><td>${sb}</td><td>${eb}</td><td style="white-space:nowrap"><button class="btn bgh bsm" onclick="editProd(${p.id})" style="margin-right:4px">✏️</button><button class="btn bd2 bsm" onclick="delProd(${p.id})">🗑</button></td></tr>`;
     }).join('') : `<tr><td colspan="7"><div class="emptyst"><p>No products found</p></div></td></tr>`;
   }
 }
-function openAddProd(){ S.editP=null; g('pmT').textContent='Add Product'; ['pN','pB'].forEach(x=>g(x).value=''); g('pE').value='📦'; g('pCat').value='Food & Snacks'; g('pUn').value='piece'; g('pC').value=''; g('pM').value=S.cfg.mkup; g('pSP').value=''; g('pSt').value=0; g('pMS').value=S.cfg.low; g('pEx').value=''; g('pprev').style.display='none'; openMod('mProd'); }
+/* ── Pack-split UI toggle ── */
+function toggleSplitUI(){
+  const isSplit = g('pSplitToggle').checked;
+  const track = g('pSplitTrack'), thumb = g('pSplitThumb');
+  g('splitFields').style.display = isSplit ? 'block' : 'none';
+  track.style.background = isSplit ? 'var(--g)' : 'var(--s3)';
+  thumb.style.left = isSplit ? '21px' : '3px';
+  // Update sell unit label
+  const sellUnit = g('pUn').value;
+  g('pSellUnitLabel').textContent = sellUnit;
+  g('pStockUnitLabel').textContent = isSplit ? sellUnit : sellUnit;
+  g('pMinUnitLabel').textContent   = sellUnit;
+  calcP();
+}
+
+function calcStockHint(){
+  const isSplit = g('pSplitToggle').checked;
+  const packs = parseInt(g('pSt').value) || 0;
+  const ppp   = parseInt(g('pPcsPerPack').value) || 1;
+  const hint  = g('stockHint');
+  if(isSplit && packs > 0){
+    hint.textContent = `= ${packs} packs × ${ppp} pieces = ${packs * ppp} pieces total`;
+  } else { hint.textContent = ''; }
+}
+
+function onManualPrice(){ /* user manually edited price — don't overwrite */ }
+
+function openAddProd(){
+  S.editP = null;
+  g('pmT').textContent  = 'Add Product';
+  ['pN','pB'].forEach(x => g(x).value = '');
+  g('pE').value = '📦';
+  g('pCat').value     = 'Food & Snacks';
+  g('pBuyUnit').value = 'piece';
+  g('pUn').value      = 'piece';
+  g('pC').value  = ''; g('pM').value = S.cfg.mkup; g('pSP').value = '';
+  g('pSt').value = '0'; g('pMS').value = S.cfg.low; g('pEx').value = '';
+  g('pSplitToggle').checked = false;
+  g('pPcsPerPack').value = '10';
+  g('pprev').style.display = 'none';
+  g('autoFillBanner').style.display = 'none';
+  g('bcLookupStatus').textContent = '';
+  g('bcLookupStatus').style.color = '';
+  g('stockHint').textContent = '';
+  g('splitCalcHint').textContent = '';
+  toggleSplitUI();
+  openMod('mProd');
+}
+
 function editProd(id){
-  const p=S.prods.find(x=>x.id===id); S.editP=id; g('pmT').textContent='Edit Product';
-  g('pN').value=p.name; g('pE').value=p.em; g('pCat').value=p.cat; g('pUn').value=p.unit;
-  g('pC').value=p.cost; g('pM').value=p.mkup; g('pSP').value=p.price; g('pB').value=p.bc;
-  g('pSt').value=p.stock; g('pMS').value=p.min; g('pEx').value=p.exp||''; calcP(); openMod('mProd');
+  const p = S.prods.find(x => x.id===id);
+  S.editP = id;
+  g('pmT').textContent = 'Edit Product';
+  g('pN').value  = p.name;  g('pE').value = p.em;
+  g('pCat').value = p.cat;  g('pUn').value = p.unit;
+  g('pBuyUnit').value = p.buyUnit || p.unit;
+  g('pC').value  = p.cost;  g('pM').value  = p.mkup; g('pSP').value = p.price;
+  g('pB').value  = p.bc;    g('pSt').value  = p.stock; g('pMS').value = p.min;
+  g('pEx').value = p.exp || '';
+  // Pack-split
+  const isSplit = !!(p.pcsPerPack && p.pcsPerPack > 1);
+  g('pSplitToggle').checked = isSplit;
+  g('pPcsPerPack').value    = p.pcsPerPack || 10;
+  g('autoFillBanner').style.display = 'none';
+  g('bcLookupStatus').textContent   = '';
+  toggleSplitUI(); calcP(); openMod('mProd');
 }
+
 function calcP(){
-  const cost=parseFloat(g('pC').value)||0, mkup=parseFloat(g('pM').value)||0;
-  const sell=cost*(1+mkup/100); g('pSP').value=sell.toFixed(2);
-  const pp=g('pprev');
-  if(cost>0){ pp.style.display='block'; pp.innerHTML=`💡 Cost: <b>${fmt(cost)}</b> → Sell: <b style="color:var(--g)">${fmt(sell)}</b> → Profit: <b style="color:var(--ok)">${fmt(sell-cost)}</b> per unit`; }
-  else pp.style.display='none';
+  const cost    = parseFloat(g('pC').value) || 0;
+  const mkup    = parseFloat(g('pM').value) || 0;
+  const isSplit = g('pSplitToggle').checked;
+  const ppp     = parseInt(g('pPcsPerPack').value) || 1;
+  const buyUnit = g('pBuyUnit').value;
+  const sellUnit= g('pUn').value;
+
+  let costPerSellUnit = cost;
+  if(isSplit && ppp > 1) costPerSellUnit = cost / ppp;
+
+  const sell = costPerSellUnit * (1 + mkup/100);
+  g('pSP').value = sell.toFixed(2);
+  g('pSellUnitLabel').textContent = sellUnit;
+
+  const pp = g('pprev');
+  if(cost > 0){
+    pp.style.display = 'block';
+    if(isSplit && ppp > 1){
+      pp.innerHTML = `📦 Buy 1 <b>${buyUnit}</b> (₱${cost.toFixed(2)}) → split into <b>${ppp} ${sellUnit}s</b><br>
+        Cost/pc: <b>${fmt(costPerSellUnit)}</b> → Sell/pc: <b style="color:var(--g)">${fmt(sell)}</b> → Profit/pc: <b style="color:var(--ok)">${fmt(sell-costPerSellUnit)}</b><br>
+        <span style="color:var(--ac)">Total profit per ${buyUnit}: ${fmt((sell-costPerSellUnit)*ppp)}</span>`;
+      g('splitCalcHint').innerHTML = `1 ${buyUnit} (₱${cost.toFixed(2)}) ÷ ${ppp} pieces = ₱${costPerSellUnit.toFixed(2)} cost/piece → sell at ₱${sell.toFixed(2)}/piece`;
+    } else {
+      pp.innerHTML = `💡 Cost: <b>${fmt(cost)}</b> → Sell: <b style="color:var(--g)">${fmt(sell)}</b> → Profit: <b style="color:var(--ok)">${fmt(sell-cost)}</b> per ${sellUnit}`;
+    }
+  } else { pp.style.display = 'none'; }
+
+  calcStockHint();
 }
+
 function saveProd(){
-  const name=g('pN').value.trim(); if(!name){toast('Name required','warn');return;}
-  const cost=parseFloat(g('pC').value)||0; if(!cost){toast('Cost price required','warn');return;}
-  const data={name,em:g('pE').value||'📦',cat:g('pCat').value,unit:g('pUn').value,cost,mkup:parseFloat(g('pM').value)||0,price:parseFloat(g('pSP').value)||cost,bc:g('pB').value.trim(),stock:parseInt(g('pSt').value)||0,min:parseInt(g('pMS').value)||5,exp:g('pEx').value||''};
-  if(S.editP){ Object.assign(S.prods.find(x=>x.id===S.editP),data); toast('Product updated!','success'); }
-  else { data.id=Date.now(); S.prods.push(data); toast('Product added!','success'); }
+  const name = g('pN').value.trim();
+  if(!name){ toast('Product name is required','warn'); return; }
+  const cost = parseFloat(g('pC').value) || 0;
+  if(!cost){ toast('Cost price is required','warn'); return; }
+
+  const isSplit  = g('pSplitToggle').checked;
+  const ppp      = isSplit ? (parseInt(g('pPcsPerPack').value)||1) : 1;
+  const sellUnit = g('pUn').value;
+  const buyUnit  = g('pBuyUnit').value;
+  let stockVal   = parseInt(g('pSt').value) || 0;
+  // If buying in packs and splitting, stock entered as packs → convert to pieces
+  if(isSplit && ppp > 1) stockVal = stockVal; // user enters stock in pieces directly
+
+  const data = {
+    name, em:g('pE').value||'📦', cat:g('pCat').value,
+    unit:sellUnit, buyUnit,
+    cost, mkup:parseFloat(g('pM').value)||0,
+    price:parseFloat(g('pSP').value)||cost,
+    bc:g('pB').value.trim(),
+    stock:stockVal,
+    min:parseInt(g('pMS').value)||5,
+    exp:g('pEx').value||'',
+    pcsPerPack: isSplit ? ppp : 1,
+    isSplit
+  };
+
+  if(S.editP){
+    Object.assign(S.prods.find(x=>x.id===S.editP), data);
+    toast('Product updated! ✅','success');
+  } else {
+    data.id = Date.now();
+    S.prods.push(data);
+    toast('Product added! ✅','success');
+  }
   closeMod('mProd'); renderInv(); renderPOS(); refreshDash();
 }
 function delProd(id){
@@ -1715,113 +1905,165 @@ function changePass(){
   S.cfg.pw=nw; toast('Password updated! ✅','success'); g('cp').value=''; g('np').value='';
 }
 
-/* ══════════════════════════════════════
+/* ════════════════════════════════════════
    CAMERA SCANNER
-   Modes:
-     'pos'   — scan to add to cart
-     'prod'  — scan to fill barcode field in Add/Edit Product
-     'inv'   — scan to find & highlight product in Inventory
-              (also offers quick delete)
-══════════════════════════════════════ */
+   Modes: pos (add to cart) | prod (fill product form) | inv (find/delete)
+   Features: back camera by default, front/back flip, fast BarcodeDetector loop
+════════════════════════════════════════ */
 
 const CAM_LABELS = {
   pos:  '🛒 Scan to add product to cart',
-  prod: '📦 Scan to fill in the barcode field',
+  prod: '📦 Scan to auto-fill product details',
   inv:  '🔍 Scan to find or delete a product'
 };
+
+// Camera state
+let _facing = 'environment'; // 'environment'=back, 'user'=front
 
 function openCam()    { S.camMode='pos';  _openCamModal(); }
 function openCamProd(){ S.camMode='prod'; _openCamModal(); }
 function openCamInv() { S.camMode='inv';  _openCamModal(); }
 
 function _openCamModal(){
-  // Update title and mode label
-  const titles = { pos:'📷 POS Scanner', prod:'📷 Add Product — Scan Barcode', inv:'📷 Inventory — Scan to Find / Delete' };
-  g('camTitle').textContent = titles[S.camMode] || '📷 Barcode Scanner';
-  g('camModeTag').textContent = CAM_LABELS[S.camMode] || '';
+  const titles = {
+    pos:  '📷 POS — Scan to Add to Cart',
+    prod: '📷 Scan Barcode — Auto-fill Product',
+    inv:  '📷 Inventory — Scan to Find / Delete'
+  };
+  g('camTitle').textContent    = titles[S.camMode] || '📷 Scanner';
+  g('camModeTag').textContent  = CAM_LABELS[S.camMode] || '';
+  _facing = 'environment'; // always start with back camera
   resetCamUI();
   openMod('mCam');
+  // Auto-start camera for faster experience
+  setTimeout(startCam, 200);
 }
 
 function resetCamUI(){
-  g('camSt').textContent = 'Tap "Start Camera" to begin scanning';
-  g('camRes').style.display = 'none';
-  g('camNote').style.display = 'none';
-  g('camBtn').textContent  = '📷 Start Camera';
-  g('camBtn').disabled     = false;
-  g('mbCode').value        = '';
+  g('camSt').textContent      = '';
+  g('camRes').style.display   = 'none';
+  g('camNote').style.display  = 'none';
+  g('camBtn').textContent     = '📷 Start Camera';
+  g('camBtn').style.display   = 'block';
+  g('camBtn').disabled        = false;
+  g('camFaceBtn').style.display = 'none';
+  g('camFlipBtn').style.display = 'none';
+  g('camSpinner').style.display = 'none';
+  g('mbCode').value = '';
 }
 
+/* ── Toggle back/front camera ── */
+function toggleFacing(){
+  _facing = _facing === 'environment' ? 'user' : 'environment';
+  // Restart stream with new facing
+  if(S.camStream){ S.camStream.getTracks().forEach(t=>t.stop()); S.camStream=null; }
+  S.camActive = false;
+  startCam();
+}
+function flipCamera(){ toggleFacing(); }
+
+/* ── Start camera stream ── */
 async function startCam(){
   if(S.camActive) return;
-  const btn = g('camBtn');
-  btn.textContent = '⏳ Starting camera…'; btn.disabled = true;
-  g('camSt').textContent = 'Requesting camera permission…';
-  g('camNote').style.display = 'none';
+  // Show spinner inside video box
+  g('camSpinner').style.display  = 'flex';
+  g('camSpinText').textContent   = _facing==='environment' ? 'Starting back camera…' : 'Starting front camera…';
+  g('camBtn').style.display      = 'none';
+  g('camHint').style.display     = 'none';
+  g('camNote').style.display     = 'none';
+  g('camSt').textContent         = '';
 
-  // Check if getUserMedia is available at all
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    _camFail('Camera API not available on this browser. Use manual entry below.');
+    _camFail('Camera not supported on this browser. Use manual entry below.');
     return;
   }
 
   try {
-    // Try rear camera first, fall back to any camera
+    // Try requested facing mode first
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video:{ facingMode:{ ideal:'environment' }, width:{ ideal:1280 }, height:{ ideal:720 } },
+        video:{ facingMode:{ exact: _facing }, width:{ideal:1280}, height:{ideal:720} },
         audio:false
       });
-    } catch(e){
-      stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+    } catch(e1){
+      // 'exact' failed — try 'ideal'
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video:{ facingMode:{ ideal: _facing }, width:{ideal:1280}, height:{ideal:720} },
+          audio:false
+        });
+      } catch(e2){
+        // Fallback to any camera
+        stream = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+      }
     }
 
     S.camStream = stream; S.camActive = true;
     const vid = g('camVid');
     vid.srcObject = stream;
     await vid.play();
-    g('camSt').textContent = '📷 Hold camera steady over the barcode…';
-    btn.textContent = '🔴 Scanning — please wait…'; btn.disabled = true;
+
+    // Hide spinner, show flip button
+    g('camSpinner').style.display  = 'none';
+    g('camFaceBtn').style.display  = 'flex';
+    g('camFlipBtn').style.display  = 'flex';
+    g('camFaceBtn').textContent    = _facing==='environment' ? '🤳 Front' : '📸 Back';
+    g('camSt').textContent         = '📷 Hold steady over barcode — scanning…';
+
     _detectLoop(vid);
+
   } catch(err){
-    let msg = '❌ Camera access denied.';
-    if(err.name === 'NotAllowedError')  msg = '❌ Camera permission denied. Please allow camera access in your browser settings, then try again.';
-    if(err.name === 'NotFoundError')    msg = '❌ No camera found on this device.';
-    if(err.name === 'NotReadableError') msg = '❌ Camera is in use by another app. Close it and try again.';
+    let msg = '❌ Could not access camera.';
+    if(err.name==='NotAllowedError')  msg = '❌ Camera permission denied. Allow camera in browser settings.';
+    if(err.name==='NotFoundError')    msg = '❌ No camera found on this device.';
+    if(err.name==='NotReadableError') msg = '❌ Camera busy — close other apps using it.';
+    if(err.name==='OverconstrainedError') {
+      // facing mode not available — try other side
+      _facing = _facing==='environment' ? 'user' : 'environment';
+      S.camActive = false;
+      g('camSpinner').style.display = 'none';
+      g('camBtn').style.display = 'block';
+      startCam(); return;
+    }
     _camFail(msg);
   }
 }
 
 function _camFail(msg){
-  g('camSt').textContent = msg;
-  g('camBtn').textContent = '📷 Start Camera'; g('camBtn').disabled = false;
-  // Show browser tip
+  g('camSpinner').style.display = 'none';
+  g('camSt').textContent        = msg;
+  g('camBtn').style.display     = 'block';
+  g('camBtn').disabled          = false;
+  g('camHint').style.display    = 'block';
   const note = g('camNote');
-  note.innerHTML = '💡 <b>Tips:</b><br>• iPhone/iPad: use <b>Safari</b> browser<br>• Android: use <b>Chrome</b> browser<br>• Make sure you tap "Allow" when asked for camera permission<br>• Or just type the barcode number in the field below';
+  note.innerHTML = '💡 <b>Tips for scanning:</b><br>• <b>iPhone/iPad:</b> use Safari browser<br>• <b>Android:</b> use Chrome browser<br>• Tap "Allow" when browser asks for camera<br>• Good lighting helps a lot<br>• Hold 15–25 cm from the barcode<br>• Or just type the barcode number below';
   note.style.display = 'block';
 }
 
+/* ── Fast barcode detection loop ── */
 async function _detectLoop(vid){
-  // Method 1: Native BarcodeDetector API (Chrome on Android, Chrome desktop, Edge)
   if('BarcodeDetector' in window){
     let fmts = [];
     try { fmts = await BarcodeDetector.getSupportedFormats(); } catch(e){}
     const useFmts = fmts.length
       ? fmts
-      : ['code_128','code_39','ean_13','ean_8','upc_a','upc_e','qr_code','itf'];
+      : ['code_128','code_39','ean_13','ean_8','upc_a','upc_e','qr_code','itf','data_matrix'];
     const det = new BarcodeDetector({ formats: useFmts });
-    let lastCode = '', lastTime = 0;
+    let lastCode='', lastTime=0;
     const loop = async () => {
       if(!S.camActive || !S.camStream) return;
       try {
         const codes = await det.detect(vid);
-        if(codes && codes.length > 0){
+        if(codes && codes.length){
           const code = codes[0].rawValue;
-          // Debounce — don't fire same code twice within 2 seconds
-          if(code === lastCode && Date.now() - lastTime < 2000){ requestAnimationFrame(loop); return; }
-          lastCode = code; lastTime = Date.now();
-          handleCode(code); return;
+          if(code !== lastCode || Date.now()-lastTime > 2000){
+            lastCode=code; lastTime=Date.now();
+            // Flash green border on scan box
+            const sb = vid.parentElement.querySelector('[style*="border:2.5px"]');
+            if(sb){ sb.style.borderColor='var(--ok)'; setTimeout(()=>sb.style.borderColor='var(--g)',400); }
+            handleCode(code); return;
+          }
         }
       } catch(e){}
       requestAnimationFrame(loop);
@@ -1830,110 +2072,54 @@ async function _detectLoop(vid){
     return;
   }
 
-  // Method 2: Canvas snapshot + fetch to open-source barcode API (works on iOS Safari)
-  // We periodically grab a frame and try to decode via zxing-js WASM endpoint
-  if(typeof window.ZXing !== 'undefined'){
-    // ZXing loaded externally
-    try {
-      const reader = new ZXing.BrowserMultiFormatReader();
-      reader.decodeFromVideoDevice(null, 'camVid', (result, err) => {
-        if(result && S.camActive) handleCode(result.getText());
-      });
-      S._zxReader = reader;
-      return;
-    } catch(e){}
-  }
-
-  // Method 3: Canvas + quagga-style — inform user and fall back gracefully
-  g('camSt').textContent = '⚠️ Auto-scan not supported on this browser. Please type the barcode below.';
+  // No BarcodeDetector — show manual fallback
+  g('camSt').textContent = '⚠️ Auto-scan not supported on this browser.';
   const note = g('camNote');
-  note.innerHTML = '💡 <b>For auto-scan:</b> Open this page in <b>Chrome</b> (Android) or <b>Safari</b> (iPhone/iPad iOS 17+).<br>Or just type/paste the barcode number in the field below — it works just as well!';
+  note.innerHTML = '💡 <b>For auto-scan use Chrome (Android) or Safari iOS 17+.</b><br>Or type the barcode number in the field below — works just as well!';
   note.style.display = 'block';
-  g('camBtn').textContent = '📷 Start Camera'; g('camBtn').disabled = false;
+  g('camBtn').style.display = 'block';
+  g('camBtn').disabled = false;
 }
 
-/* ════════════════════════════════════════
-   HANDLE SCANNED / TYPED CODE
-════════════════════════════════════════ */
+/* ── Handle scanned or manually typed barcode ── */
 async function handleCode(code){
   if(!code || !code.trim()) return;
   code = code.trim();
 
-  // ── POS mode: add product to cart ──
+  /* ── POS: add to cart ── */
   if(S.camMode === 'pos'){
     stopCam();
-    const p = S.prods.find(x => x.bc === code || String(x.id) === code);
-    if(p){ addToCart(p.id); toast('✅ Added: ' + p.name, 'success'); }
-    else  { toast('Product not found for barcode: ' + code, 'warn'); }
+    const p = S.prods.find(x => x.bc===code || String(x.id)===code);
+    if(p){ addToCart(p.id); toast('✅ Added: '+p.name,'success'); }
+    else  { toast('Product not found: '+code,'warn'); }
     return;
   }
 
-  // ── PROD mode: lookup barcode online → auto-fill product form ──
+  /* ── PROD: fill product form + online lookup ── */
   if(S.camMode === 'prod'){
     stopCam();
-
-    // Check if barcode already exists in our inventory
-    const existing = S.prods.find(x => x.bc === code);
+    const existing = S.prods.find(x => x.bc===code);
+    g('pB').value = code;
+    g('autoFillBanner').style.display = 'none';
     if(existing){
-      toast('⚠️ Barcode already used by: ' + existing.name, 'warn');
-      g('pB').value = code;
+      toast('⚠️ Barcode already used by: '+existing.name,'warn');
       return;
     }
-
-    // Show loading state in the product form
-    g('pB').value = code;
-    g('pN').value = '';
-    g('pEx').value = '';
-    _setFormLookupState(true);
-
-    // Lookup from Open Food Facts (free global food product database)
-    const info = await _lookupBarcode(code);
-    _setFormLookupState(false);
-
-    if(info){
-      // Auto-fill everything we found
-      if(info.name)    g('pN').value  = info.name;
-      if(info.emoji)   g('pE').value  = info.emoji;
-      if(info.cat)     g('pCat').value = info.cat;
-      if(info.unit)    g('pUn').value  = info.unit;
-      if(info.expiry)  g('pEx').value  = info.expiry;
-
-      // Highlight filled fields so user knows what was auto-filled
-      _flashField('pN');
-      if(info.expiry) _flashField('pEx');
-
-      toast('✅ Product info loaded! Just add cost & quantity.', 'success');
-    } else {
-      toast('Barcode scanned (' + code + ') — product not found online. Fill in manually.', 'info');
-      // Put cursor in name field for manual typing
-      setTimeout(() => g('pN').focus(), 200);
-    }
+    await _lookupAndFill(code);
     return;
   }
 
-  // ── INV mode: find product in inventory, offer Edit or Delete ──
+  /* ── INV: find product → edit or delete ── */
   if(S.camMode === 'inv'){
     stopCam();
-    const p = S.prods.find(x => x.bc === code || String(x.id) === code);
+    const p = S.prods.find(x => x.bc===code || String(x.id)===code);
     if(!p){
-      // Not in inventory — offer to look up online and add
-      toast('Product not found in inventory: ' + code, 'warn');
-      if(confirm('Barcode "' + code + '" is not in your inventory.\n\nLook it up online and add it as a new product?')){
+      toast('Not in inventory: '+code,'warn');
+      if(confirm('Barcode "'+code+'" not found in inventory.\n\nLook it up online and ADD it as a new product?')){
         openAddProd();
-        setTimeout(async () => {
+        setTimeout(async()=>{
           g('pB').value = code;
-          _setFormLookupState(true);
-          const info = await _lookupBarcode(code);
-          _setFormLookupState(false);
-          if(info){
-            if(info.name)   g('pN').value  = info.name;
-            if(info.emoji)  g('pE').value  = info.emoji;
-            if(info.cat)    g('pCat').value = info.cat;
-            if(info.unit)   g('pUn').value  = info.unit;
-            if(info.expiry) g('pEx').value  = info.expiry;
-            _flashField('pN');
-            toast('✅ Product info loaded! Just add cost & quantity.', 'success');
-          }
+          await _lookupAndFill(code);
         }, 200);
       }
       return;
@@ -1942,187 +2128,62 @@ async function handleCode(code){
   }
 }
 
-/* ── Flash a field green briefly to show it was auto-filled ── */
-function _flashField(id){
-  const el = g(id); if(!el) return;
-  el.style.borderColor = 'var(--ok)';
-  el.style.background  = 'rgba(46,213,115,.08)';
-  setTimeout(() => { el.style.borderColor = ''; el.style.background = ''; }, 2500);
-}
+/* ── Lookup barcode online and fill product form ── */
+async function _lookupAndFill(code){
+  g('bcLookupStatus').textContent = '🔍 Looking up barcode online…';
+  g('autoFillBanner').style.display = 'none';
+  _setFormLookupState(true);
 
-/* ── Show loading state while looking up barcode ── */
-function _setFormLookupState(loading){
-  const nameEl = g('pN');
-  if(loading){
-    nameEl.value = '⏳ Looking up barcode online…';
-    nameEl.disabled = true;
-    nameEl.style.color = 'var(--t2)';
+  const info = await _lookupBarcode(code);
+  _setFormLookupState(false);
+
+  if(info && info.name){
+    g('pN').value  = info.name;
+    if(info.emoji)  g('pE').value   = info.emoji;
+    if(info.cat)    g('pCat').value = info.cat;
+    if(info.unit){
+      // Set both buy and sell unit to matched unit
+      g('pBuyUnit').value = info.unit;
+      g('pUn').value      = info.unit;
+    }
+    if(info.expiry) g('pEx').value = info.expiry;
+    _flashField('pN');
+    if(info.expiry) _flashField('pEx');
+    g('autoFillBanner').style.display = 'block';
+    g('bcLookupStatus').textContent = '✅ Product found: '+info.name;
+    g('bcLookupStatus').style.color = 'var(--ok)';
+    // Scroll to cost field so user fills it next
+    setTimeout(()=>g('pC').focus(), 300);
   } else {
-    nameEl.disabled = false;
-    nameEl.style.color = '';
-    if(nameEl.value.startsWith('⏳')) nameEl.value = '';
+    g('bcLookupStatus').textContent = '⚠️ Not found online — fill in manually';
+    g('bcLookupStatus').style.color = 'var(--yw)';
+    setTimeout(()=>g('pN').focus(), 200);
   }
 }
 
-/* ════════════════════════════════════════
-   BARCODE LOOKUP — Open Food Facts API
-   Free database of food products worldwide.
-   Works for most grocery items with EAN-13,
-   UPC-A, or other standard barcodes.
-════════════════════════════════════════ */
-async function _lookupBarcode(code){
-  try {
-    // Open Food Facts — free, no API key needed, millions of products
-    const res = await fetch(
-      `https://world.openfoodfacts.org/api/v2/product/${code}?fields=product_name,product_name_en,generic_name,categories_tags,quantity,expiration_date,best_before_date,brands,food_groups_tags`,
-      { signal: AbortSignal.timeout(6000) }
-    );
-    if(!res.ok) return null;
-    const data = await res.json();
-    if(data.status !== 1 || !data.product) return null;
-
-    const p = data.product;
-
-    // ── Product Name ──
-    // Try several name fields, pick the best one
-    let name = p.product_name_en || p.product_name || p.generic_name || '';
-    // Add brand if available and not already in name
-    if(p.brands){
-      const brand = p.brands.split(',')[0].trim();
-      if(name && !name.toLowerCase().includes(brand.toLowerCase())) name = brand + ' ' + name;
-      else if(!name) name = brand;
-    }
-    name = name.trim();
-    // Clean up — remove extra spaces
-    name = name.replace(/\s+/g, ' ').trim();
-    // Title case
-    if(name) name = name.replace(/\b\w/g, c => c.toUpperCase());
-
-    // ── Expiry Date ──
-    let expiry = '';
-    const rawExp = p.expiration_date || p.best_before_date || '';
-    if(rawExp){
-      expiry = _parseExpiry(rawExp);
-    }
-
-    // ── Category → map to our categories ──
-    const cats = (p.categories_tags || []).join(' ').toLowerCase();
-    const fgs  = (p.food_groups_tags || []).join(' ').toLowerCase();
-    let cat = 'Other', emoji = '📦', unit = 'piece';
-
-    if(cats.includes('beverages') || cats.includes('drinks') || cats.includes('water') || cats.includes('soda') || cats.includes('juice')){
-      cat='Beverages'; emoji='🥤'; unit='bottle';
-    } else if(cats.includes('snack') || cats.includes('chip') || cats.includes('cracker') || cats.includes('biscuit') || cats.includes('cookie')){
-      cat='Food & Snacks'; emoji='🍿'; unit='pack';
-    } else if(cats.includes('noodle') || cats.includes('pasta') || cats.includes('instant')){
-      cat='Food & Snacks'; emoji='🍜'; unit='pack';
-    } else if(cats.includes('canned') || cats.includes('tuna') || cats.includes('sardine') || cats.includes('corned')){
-      cat='Canned Goods'; emoji='🥫'; unit='can';
-    } else if(cats.includes('soap') || cats.includes('shampoo') || cats.includes('hygiene') || cats.includes('personal') || cats.includes('toothpaste')){
-      cat='Personal Care'; emoji='🧴'; unit='piece';
-    } else if(cats.includes('detergent') || cats.includes('cleaning') || cats.includes('household') || cats.includes('fabric')){
-      cat='Household'; emoji='🫧'; unit='sachet';
-    } else if(cats.includes('sauce') || cats.includes('condiment') || cats.includes('vinegar') || cats.includes('ketchup')){
-      cat='Condiments'; emoji='🫙'; unit='bottle';
-    } else if(cats.includes('dairy') || cats.includes('milk') || cats.includes('cheese') || cats.includes('yogurt')){
-      cat='Food & Snacks'; emoji='🥛'; unit='piece';
-    } else if(cats.includes('coffee') || cats.includes('tea')){
-      cat='Beverages'; emoji='☕'; unit='sachet';
-    } else if(cats.includes('rice') || cats.includes('flour') || cats.includes('sugar') || cats.includes('oil')){
-      cat='Food & Snacks'; emoji='🌾'; unit='kg';
-    } else if(fgs.includes('sugary') || cats.includes('candy') || cats.includes('chocolate') || cats.includes('sweet')){
-      cat='Food & Snacks'; emoji='🍬'; unit='piece';
-    } else if(cats.includes('food') || cats.includes('meal')){
-      cat='Food & Snacks'; emoji='🍱'; unit='pack';
-    }
-
-    return { name: name || null, expiry: expiry || null, cat, emoji, unit };
-
-  } catch(err){
-    // Timeout or network error — return null silently
-    return null;
-  }
-}
-
-/* ── Parse various expiry date formats from Open Food Facts ── */
-function _parseExpiry(raw){
-  if(!raw) return '';
-  raw = raw.trim();
-
-  // Already in YYYY-MM-DD format
-  if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-
-  // MM/YYYY or MM-YYYY
-  if(/^\d{2}[\/\-]\d{4}$/.test(raw)){
-    const parts = raw.split(/[\/\-]/);
-    return parts[1] + '-' + parts[0] + '-01';
-  }
-
-  // YYYY/MM or YYYY-MM
-  if(/^\d{4}[\/\-]\d{2}$/.test(raw)){
-    const parts = raw.split(/[\/\-]/);
-    return parts[0] + '-' + parts[1] + '-01';
-  }
-
-  // MM/DD/YYYY
-  if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)){
-    const [m,d,y] = raw.split('/');
-    return y + '-' + m + '-' + d;
-  }
-
-  // DD.MM.YYYY
-  if(/^\d{2}\.\d{2}\.\d{4}$/.test(raw)){
-    const [d,m,y] = raw.split('.');
-    return y + '-' + m + '-' + d;
-  }
-
-  // Try generic Date parse as last resort
-  try {
-    const d = new Date(raw);
-    if(!isNaN(d)) return d.toISOString().split('T')[0];
-  } catch(e){}
-
-  return '';
-}
-
-function _showInvScanResult(p){
-  // Build a nice modal-style confirm
-  const action = confirm(
-    '✅ Product Found!\n\n' +
-    p.em + ' ' + p.name + '\n' +
-    'Price: ₱' + p.price.toFixed(2) + '\n' +
-    'Stock: ' + p.stock + ' ' + p.unit + '\n\n' +
-    'Press OK to EDIT this product\nPress Cancel to DELETE it'
-  );
-  if(action){
-    // Edit
-    editProd(p.id);
-    toast('Opening: ' + p.name, 'info');
-  } else {
-    // Confirm delete
-    if(confirm('⚠️ DELETE "' + p.name + '"?\nThis cannot be undone.')){
-      S.prods = S.prods.filter(x => x.id !== p.id);
-      renderInv(); refreshDash();
-      toast('🗑 Deleted: ' + p.name, 'danger');
-    }
-  }
+/* ── Trigger lookup when barcode is typed manually in the form ── */
+let _bcTypeTimer = null;
+function onBarcodeTyped(val){
+  clearTimeout(_bcTypeTimer);
+  if(val.length < 6) return; // wait for at least 6 chars
+  _bcTypeTimer = setTimeout(()=> _lookupAndFill(val.trim()), 700);
 }
 
 function doManual(){
   const code = g('mbCode').value.trim();
-  if(!code){ toast('Please enter a barcode number', 'warn'); return; }
+  if(!code){ toast('Please enter a barcode number','warn'); return; }
   handleCode(code);
 }
 
 function stopCam(){
   S.camActive = false;
-  if(S.camStream){ S.camStream.getTracks().forEach(t => t.stop()); S.camStream = null; }
-  if(S._zxReader){ try{ S._zxReader.reset(); }catch(e){} S._zxReader = null; }
-  const vid = g('camVid'); if(vid) vid.srcObject = null;
+  if(S.camStream){ S.camStream.getTracks().forEach(t=>t.stop()); S.camStream=null; }
+  if(S._zxReader){ try{ S._zxReader.reset(); }catch(e){} S._zxReader=null; }
+  const vid=g('camVid'); if(vid) vid.srcObject=null;
   closeMod('mCam');
 }
 
-document.addEventListener('visibilitychange', () => { if(document.hidden) stopCam(); });
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) stopCam(); });
 
 /* ── CLAUDE ── */
 function showClaude(){ g('clResp').style.display='none'; g('clQ').value=''; openMod('mClaude'); }
