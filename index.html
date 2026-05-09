@@ -613,6 +613,7 @@ tbody tr:active { background:rgba(255,255,255,.03); }
       </div>
       <div class="tb-r">
         <span class="tdate" id="tdate"></span>
+        <span id="syncBadge" style="font-size:11px;font-weight:600;"></span>
         <button class="bico" onclick="showClaude()">🤖</button>
         <button class="bico" onclick="gp('dashboard')">🔔</button>
       </div>
@@ -776,6 +777,17 @@ tbody tr:active { background:rgba(255,255,255,.03); }
           <div class="ig"><label>Current Password</label><input type="password" id="cp" autocomplete="current-password"></div>
           <div class="ig"><label>New Password</label><input type="password" id="np" autocomplete="new-password"></div>
           <button class="btn bw bsm" onclick="changePass()" style="width:100%">Update Password</button>
+        </div>
+        <div class="card" style="margin-top:14px;">
+          <div style="font-weight:700;margin-bottom:6px;font-size:15px;">💾 Data &amp; Backup</div>
+          <div style="font-size:13px;color:var(--t2);margin-bottom:14px;line-height:1.5;">Your data is saved automatically on <b>this device</b>. Use backup/restore to move data between devices or keep a safe copy.</div>
+          <div style="background:rgba(46,213,115,.08);border:1px solid rgba(46,213,115,.2);border-radius:var(--rs);padding:12px 14px;margin-bottom:14px;font-size:13px;" id="dataStats"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <button class="btn bp bsm" onclick="exportData()" style="width:100%">📥 Download Backup</button>
+            <button class="btn bgh bsm" onclick="importData()" style="width:100%">📤 Restore Backup</button>
+          </div>
+          <button class="btn bd2 bsm" onclick="clearAllData()" style="width:100%">🗑 Clear All Data</button>
+          <div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:center;">Clear All permanently deletes everything and cannot be undone</div>
         </div>
       </div>
 
@@ -1133,13 +1145,131 @@ document.addEventListener('click', e => {
   }
 });
 
+/* ════════════════════════════════════════
+   PERSISTENCE — localStorage auto-save
+   Every change saves instantly. On load,
+   saved data is restored automatically.
+   Works across page refresh and reopening.
+════════════════════════════════════════ */
+const DB_KEY = 'njnpos_v2';
+
+function saveData(){
+  try {
+    const snap = {
+      prods:  S.prods,
+      orders: S.orders,
+      dels:   S.dels,
+      custs:  S.custs,
+      exps:   S.exps,
+      cfg:    S.cfg,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(DB_KEY, JSON.stringify(snap));
+    _updSyncBadge('saved');
+  } catch(e){
+    console.warn('Save failed:', e);
+  }
+}
+
+function loadData(){
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if(!raw) return false;
+    const snap = JSON.parse(raw);
+    if(snap.prods  && Array.isArray(snap.prods))  S.prods  = snap.prods;
+    if(snap.orders && Array.isArray(snap.orders)) S.orders = snap.orders;
+    if(snap.dels   && Array.isArray(snap.dels))   S.dels   = snap.dels;
+    if(snap.custs  && Array.isArray(snap.custs))  S.custs  = snap.custs;
+    if(snap.exps   && Array.isArray(snap.exps))   S.exps   = snap.exps;
+    if(snap.cfg    && typeof snap.cfg === 'object'){
+      // Merge so new cfg keys get defaults
+      S.cfg = Object.assign({}, S.cfg, snap.cfg);
+    }
+    console.log('Data loaded from localStorage, saved at:', snap.savedAt);
+    return true;
+  } catch(e){
+    console.warn('Load failed:', e);
+    return false;
+  }
+}
+
+function clearAllData(){
+  if(!confirm('⚠️ This will DELETE ALL data including products, orders, customers, and expenses.\n\nThis cannot be undone. Are you sure?')) return;
+  if(!confirm('Really delete EVERYTHING? This is permanent.')) return;
+  localStorage.removeItem(DB_KEY);
+  location.reload();
+}
+
+function exportData(){
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if(!raw){ toast('No data to export','warn'); return; }
+    const blob = new Blob([raw], {type:'application/json'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = 'njnpos_backup_' + new Date().toISOString().split('T')[0] + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Backup downloaded! ✅','success');
+  } catch(e){ toast('Export failed','danger'); }
+}
+
+function importData(){
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const snap = JSON.parse(ev.target.result);
+        if(!snap.prods) throw new Error('Invalid backup file');
+        if(!confirm('Import this backup? Your current data will be replaced.')) return;
+        localStorage.setItem(DB_KEY, ev.target.result);
+        location.reload();
+      } catch(err){ toast('Invalid backup file','danger'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+/* ── Sync badge in topbar ── */
+function _updSyncBadge(state){
+  const el = g('syncBadge'); if(!el) return;
+  if(state === 'saved'){
+    el.textContent = '✅ Saved';
+    el.style.color = 'var(--ok)';
+    setTimeout(() => { el.textContent = ''; }, 2000);
+  }
+}
+
+/* ── Auto-save wrapper — call after every data change ── */
+function _save(){ saveData(); }
+
 /* ── INIT ── */
 window.onload = () => {
+  // Load saved data FIRST before anything else
+  const hadData = loadData();
+
   tick(); setInterval(tick, 30000);
   const now = new Date().toISOString().split('T')[0];
   g('dDate').value = now; g('eDate').value = now;
   checkLayout(); window.addEventListener('resize', checkLayout);
+
+  // Sync settings fields with loaded cfg
+  if(g('s-name'))  g('s-name').value  = S.cfg.name  || 'NJN Sari-Sari Store';
+  if(g('s-addr'))  g('s-addr').value  = S.cfg.addr  || '';
+  if(g('s-phone')) g('s-phone').value = S.cfg.phone || '';
+  if(g('s-owner')) g('s-owner').value = S.cfg.owner || '';
+  if(g('s-mkup'))  g('s-mkup').value  = S.cfg.mkup  || 20;
+  if(g('s-low'))   g('s-low').value   = S.cfg.low   || 5;
+  if(g('s-expw'))  g('s-expw').value  = S.cfg.expw  || 7;
+  if(g('s-foot'))  g('s-foot').value  = S.cfg.footer|| '';
+
   refreshAll();
+  if(hadData) toast('Data loaded ✅ — ' + S.prods.length + ' products, ' + S.orders.length + ' orders','success');
 };
 
 function checkLayout(){
@@ -1180,12 +1310,22 @@ function gp(id){
   const bn = g('bn-'+id);
   if(bn) bn.classList.add('on');
   g('ptitle').textContent = pname[id] || id;
-  const fns = {dashboard:refreshDash, pos:renderPOS, inventory:renderInv, orders:renderOrds, deliveries:renderDels, customers:renderCusts, expenses:renderExps, reports:renderRep, catalog:renderCat};
+  const fns = {dashboard:refreshDash, pos:renderPOS, inventory:renderInv, orders:renderOrds, deliveries:renderDels, customers:renderCusts, expenses:renderExps, reports:renderRep, catalog:renderCat, settings:_updDataStats};
   if(fns[id]) fns[id]();
   // Scroll to top
   g('pa').scrollTop = 0;
 }
-function refreshAll(){ refreshDash(); renderPOS(); renderInv(); updBadge(); }
+function refreshAll(){ refreshDash(); renderPOS(); renderInv(); updBadge(); _updDataStats(); }
+
+function _updDataStats(){
+  const el = g('dataStats'); if(!el) return;
+  const raw = localStorage.getItem('njnpos_v2');
+  let savedAt = 'Never';
+  if(raw){ try{ savedAt = new Date(JSON.parse(raw).savedAt).toLocaleString('en-PH'); }catch(e){} }
+  const kb = raw ? (raw.length/1024).toFixed(1) : '0';
+  el.innerHTML = `📦 <b>${S.prods.length}</b> products &nbsp;·&nbsp; 🧾 <b>${S.orders.length}</b> orders &nbsp;·&nbsp; 👥 <b>${S.custs.length}</b> customers<br>
+    💾 Last saved: <b>${savedAt}</b> &nbsp;·&nbsp; Size: ${kb} KB`;
+}
 function toggleSB(){ g('sb').classList.toggle('open'); g('sbov').classList.toggle('on'); }
 function closeSB(){ g('sb').classList.remove('open'); g('sbov').classList.remove('on'); }
 
@@ -1345,7 +1485,7 @@ function processCheckout(){
   S.cart.forEach(it=>{ const p=S.prods.find(x=>x.id===it.id); if(p) p.stock-=it.qty; });
   closeMod('mCo'); closeCartOv();
   showRec(ord); S.cart=[]; renderCart(); renderPOS(); refreshDash(); updFCartBtn();
-  toast('✅ Order '+ord.id+' complete!','success');
+  _save(); toast('✅ Order '+ord.id+' complete!','success');
 }
 function showRec(ord){
   const d = new Date(ord.date);
@@ -1552,11 +1692,11 @@ function saveProd(){
     S.prods.push(data);
     toast('Product added! ✅','success');
   }
-  closeMod('mProd'); renderInv(); renderPOS(); refreshDash();
+  _save(); closeMod('mProd'); renderInv(); renderPOS(); refreshDash();
 }
 function delProd(id){
   if(!confirm('Delete this product?')) return;
-  S.prods=S.prods.filter(x=>x.id!==id); renderInv(); refreshDash(); toast('Deleted','danger');
+  S.prods=S.prods.filter(x=>x.id!==id); _save(); renderInv(); refreshDash(); toast('Deleted','danger');
 }
 function openPriceTags(){
   g('tagsCont').innerHTML='<div style="display:flex;flex-wrap:wrap;">'+S.prods.map(p=>`<div class="ptag"><div class="pt-n">${p.name}</div><div class="pt-p">₱${p.price.toFixed(2)}</div><div class="pt-u">per ${p.unit}</div></div>`).join('')+'</div>';
@@ -1580,9 +1720,9 @@ function renderDels(){
 function saveDel(){
   const sup=g('dSup').value.trim(); if(!sup){toast('Supplier required','warn');return;}
   S.dels.push({id:Date.now(),sup,date:g('dDate').value,amt:parseFloat(g('dAmt').value)||0,stat:g('dStat').value,notes:g('dNotes').value});
-  closeMod('mDel'); renderDels(); toast('Delivery logged!','success');
+  _save(); closeMod('mDel'); renderDels(); toast('Delivery logged!','success');
 }
-function delDel(id){ S.dels=S.dels.filter(x=>x.id!==id); renderDels(); }
+function delDel(id){ S.dels=S.dels.filter(x=>x.id!==id); _save(); renderDels(); }
 
 /* ── CUSTOMERS ── */
 function renderCusts(){
@@ -1610,9 +1750,9 @@ function saveCust(){
   const name=g('cN').value.trim(); if(!name){toast('Name required','warn');return;}
   if(S.editC) Object.assign(S.custs.find(x=>x.id===S.editC),{name,ph:g('cPh').value,debt:parseFloat(g('cD').value)||0,limit:parseFloat(g('cL').value)||500,addr:g('cA').value});
   else S.custs.push({id:Date.now(),name,ph:g('cPh').value,debt:parseFloat(g('cD').value)||0,limit:parseFloat(g('cL').value)||500,addr:g('cA').value,tx:[]});
-  closeMod('mCust'); renderCusts(); toast('Saved!','success');
+  _save(); closeMod('mCust'); renderCusts(); toast('Saved!','success');
 }
-function delCust(id){ if(!confirm('Delete customer?')) return; S.custs=S.custs.filter(x=>x.id!==id); renderCusts(); }
+function delCust(id){ if(!confirm('Delete customer?')) return; S.custs=S.custs.filter(x=>x.id!==id); _save(); renderCusts(); }
 function openDebt(id){
   const c=S.custs.find(x=>x.id===id); S.editC=id;
   g('debtT').textContent=c.name+' — '+fmt(c.debt)+' debt';
@@ -1625,7 +1765,7 @@ function saveDebt(){
   if(!amt){toast('Amount required','warn');return;}
   if(act==='pay') c.debt=Math.max(0,c.debt-amt); else c.debt+=amt;
   c.tx.push({date:new Date().toLocaleDateString('en-PH'),act,amt,note:g('dNo').value});
-  closeMod('mDebt'); renderCusts(); toast('Updated!','success');
+  _save(); closeMod('mDebt'); renderCusts(); toast('Updated!','success');
 }
 
 /* ── EXPENSES ── */
@@ -1651,9 +1791,9 @@ function saveExp(){
   const desc=g('eDesc').value.trim(); if(!desc){toast('Description required','warn');return;}
   const amt=parseFloat(g('eAmt').value)||0; if(!amt){toast('Amount required','warn');return;}
   S.exps.push({id:Date.now(),date:g('eDate').value,cat:g('eCat').value,desc,amt,pby:g('ePay').value});
-  closeMod('mExp'); renderExps(); refreshDash(); toast('Expense logged!','success');
+  _save(); closeMod('mExp'); renderExps(); refreshDash(); toast('Expense logged!','success');
 }
-function delExp(id){ S.exps=S.exps.filter(x=>x.id!==id); renderExps(); refreshDash(); }
+function delExp(id){ S.exps=S.exps.filter(x=>x.id!==id); _save(); renderExps(); refreshDash(); }
 
 /* ══════════════════════════════════════
    REPORTS  — fixed print (opens new window with clean printable page)
@@ -1896,7 +2036,7 @@ function saveSettings(){
   S.cfg.phone=g('s-phone').value; S.cfg.owner=g('s-owner').value;
   S.cfg.mkup=parseInt(g('s-mkup').value)||20; S.cfg.low=parseInt(g('s-low').value)||5;
   S.cfg.expw=parseInt(g('s-expw').value)||7; S.cfg.footer=g('s-foot').value;
-  toast('Settings saved! ✅','success');
+  _save(); toast('Settings saved! ✅','success');
 }
 function changePass(){
   const cur=g('cp').value, nw=g('np').value;
@@ -2126,6 +2266,64 @@ async function handleCode(code){
     }
     _showInvScanResult(p);
   }
+}
+
+/* ── Show inventory scan result as a nice bottom-sheet instead of browser confirm ── */
+function _showInvScanResult(p){
+  // Build inline action sheet
+  const sheet = document.createElement('div');
+  sheet.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:3000;display:flex;align-items:flex-end;justify-content:center;';
+  sheet.innerHTML = `
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 20px 32px;animation:slideUp .25s ease;">
+      <div style="width:40px;height:4px;background:var(--bd);border-radius:4px;margin:0 auto 16px;"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px;background:var(--s2);border-radius:var(--rs);">
+        <span style="font-size:36px;">${p.em}</span>
+        <div>
+          <div style="font-size:16px;font-weight:800;">${p.name}</div>
+          <div style="font-size:13px;color:var(--t2);margin-top:3px;">${fmt(p.price)} per ${p.unit} · Stock: ${p.stock}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:2px;">${p.bc ? 'Barcode: '+p.bc : 'No barcode'}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <button id="invScanEdit" style="background:var(--ac);border:none;color:#fff;padding:16px;border-radius:var(--rs);font-size:15px;font-weight:700;min-height:52px;">✏️ Edit Product</button>
+        <button id="invScanDel"  style="background:var(--rd);border:none;color:#fff;padding:16px;border-radius:var(--rs);font-size:15px;font-weight:700;min-height:52px;">🗑️ Delete</button>
+      </div>
+      <button id="invScanClose" style="width:100%;background:none;border:1.5px solid var(--bd);color:var(--t2);padding:14px;border-radius:var(--rs);font-size:14px;font-weight:600;">Cancel</button>
+    </div>`;
+  document.body.appendChild(sheet);
+
+  sheet.querySelector('#invScanEdit').onclick = () => {
+    sheet.remove();
+    editProd(p.id);
+    toast('Editing: ' + p.name, 'info');
+  };
+  sheet.querySelector('#invScanDel').onclick = () => {
+    sheet.remove();
+    // Secondary confirm sheet
+    const conf = document.createElement('div');
+    conf.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:3001;display:flex;align-items:flex-end;justify-content:center;';
+    conf.innerHTML = `
+      <div style="background:var(--s1);border:1px solid var(--bd);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 20px 32px;animation:slideUp .25s ease;">
+        <div style="text-align:center;padding:16px 0 20px;">
+          <div style="font-size:44px;margin-bottom:10px;">⚠️</div>
+          <div style="font-size:17px;font-weight:800;margin-bottom:6px;">Delete "${p.name}"?</div>
+          <div style="font-size:13px;color:var(--t2);">This cannot be undone.</div>
+        </div>
+        <button id="confDel" style="width:100%;background:var(--rd);border:none;color:#fff;padding:16px;border-radius:var(--rs);font-size:15px;font-weight:700;margin-bottom:10px;">Yes, Delete</button>
+        <button id="confCancel" style="width:100%;background:none;border:1.5px solid var(--bd);color:var(--t2);padding:14px;border-radius:var(--rs);font-size:14px;">Cancel</button>
+      </div>`;
+    document.body.appendChild(conf);
+    conf.querySelector('#confDel').onclick = () => {
+      conf.remove();
+      S.prods = S.prods.filter(x => x.id !== p.id);
+      _save(); renderInv(); refreshDash();
+      toast('🗑 Deleted: ' + p.name, 'danger');
+    };
+    conf.querySelector('#confCancel').onclick = () => conf.remove();
+    conf.addEventListener('click', e => { if(e.target===conf) conf.remove(); });
+  };
+  sheet.querySelector('#invScanClose').onclick = () => sheet.remove();
+  sheet.addEventListener('click', e => { if(e.target===sheet) sheet.remove(); });
 }
 
 /* ── Lookup barcode online and fill product form ── */
