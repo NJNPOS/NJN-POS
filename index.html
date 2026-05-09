@@ -743,6 +743,7 @@ tbody tr:active { background:rgba(255,255,255,.03); }
           <button class="tbb" onclick="switchRep('weekly',this)">Weekly</button>
           <button class="tbb" onclick="switchRep('monthly',this)">Monthly</button>
           <button class="tbb" onclick="switchRep('products',this)">Products</button>
+          <button class="tbb" onclick="switchRep('fastmovers',this)">⚡ Fast Movers</button>
         </div>
         <div id="repContent"></div>
       </div>
@@ -916,7 +917,7 @@ tbody tr:active { background:rgba(255,255,255,.03); }
       <div class="ig"><label>Product Name *</label><input id="pN" placeholder="e.g. Sky Flakes" autocomplete="off"></div>
       <div class="ig"><label>Emoji (icon)</label><input id="pE" value="📦" placeholder="📦"></div>
       <div class="ig"><label>Category</label>
-        <select id="pCat"><option>Food &amp; Snacks</option><option>Beverages</option><option>Personal Care</option><option>Condiments</option><option>Canned Goods</option><option>Household</option><option>Other</option></select>
+        <select id="pCat"><option>Food &amp; Snacks</option><option>Beverages</option><option>Softdrinks</option><option>Cigarettes</option><option>Personal Care</option><option>Condiments</option><option>Canned Goods</option><option>Household</option><option>Other</option></select>
       </div>
 
       <!-- BUYING UNIT (how you buy it) -->
@@ -1114,6 +1115,8 @@ const S = {
     {id:6,name:'Mang Tomas Sauce',em:'🫙',cat:'Condiments',unit:'bottle',cost:28,mkup:21,price:34,stock:2,min:5,bc:'MT001',exp:'2025-11-30'},
     {id:7,name:'Tide Detergent 35g',em:'🫧',cat:'Household',unit:'sachet',cost:7,mkup:28,price:9,stock:60,min:15,bc:'TD001',exp:''},
     {id:8,name:'Skyflakes Crackers',em:'🍘',cat:'Food & Snacks',unit:'pack',cost:12,mkup:25,price:15,stock:25,min:8,bc:'SK001',exp:'2025-10-01'},
+    {id:9,name:'Coca-Cola Mismo',em:'🥤',cat:'Softdrinks',unit:'bottle',buyUnit:'bottle',cost:12,mkup:25,price:15,stock:48,min:12,bc:'CM001',exp:'2025-12-31',pcsPerPack:1,isSplit:false},
+    {id:10,name:'Marlboro Red',em:'🚬',cat:'Cigarettes',unit:'stick',buyUnit:'pack',cost:110,mkup:9,price:10,stock:200,min:40,bc:'MB001',exp:'',pcsPerPack:20,isSplit:true},
   ],
   orders:[],dels:[],custs:[
     {id:1,name:'Maria Santos',ph:'09171234567',addr:'Blk 1 Lot 2',debt:150,limit:500,tx:[]},
@@ -2122,6 +2125,179 @@ function delExp(id){ S.exps=S.exps.filter(x=>x.id!==id); _save(); renderExps(); 
 /* ══════════════════════════════════════
    REPORTS  — fixed print (opens new window with clean printable page)
 ══════════════════════════════════════ */
+/* ════════════════════════════════════════
+   FAST MOVERS REPORT
+   Shows separate net profit breakdown for
+   Softdrinks, Cigarettes, and all other
+   categories side by side.
+════════════════════════════════════════ */
+function renderFastMovers(el){
+  const now  = new Date();
+  const FAST = ['Softdrinks','Cigarettes']; // tracked categories
+
+  // Period selector (reuse repT logic — but fastmovers has its own period picker)
+  // Default: show all time + today + this month
+  const todayStr = now.toDateString();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const weekStart  = new Date(now); weekStart.setDate(weekStart.getDate()-7);
+
+  // ── Build stats for a given set of orders ──
+  function calcStats(orders){
+    const cats = {};
+    orders.forEach(o => {
+      o.items.forEach(item => {
+        // Match item to product to get its category
+        const prod = S.prods.find(p => p.id === item.id);
+        const cat  = prod ? prod.cat : 'Other';
+        if(!cats[cat]) cats[cat] = {sales:0, cost:0, profit:0, qty:0, orders:0};
+        cats[cat].sales  += item.price * item.qty;
+        cats[cat].cost   += item.cost  * item.qty;
+        cats[cat].profit += (item.price - item.cost) * item.qty;
+        cats[cat].qty    += item.qty;
+      });
+      // Count which categories appeared in this order
+      const ocats = [...new Set(o.items.map(i => { const p=S.prods.find(x=>x.id===i.id); return p?p.cat:'Other'; }))];
+      ocats.forEach(c => { if(cats[c]) cats[c].orders += (1/ocats.length); }); // rough order attribution
+    });
+    return cats;
+  }
+
+  const todayOrders = S.orders.filter(o => new Date(o.date).toDateString() === todayStr);
+  const weekOrders  = S.orders.filter(o => new Date(o.date) >= weekStart);
+  const monthOrders = S.orders.filter(o => new Date(o.date) >= monthStart);
+  const allOrders   = S.orders;
+
+  const todayStats = calcStats(todayOrders);
+  const weekStats  = calcStats(weekOrders);
+  const monthStats = calcStats(monthOrders);
+  const allStats   = calcStats(allOrders);
+
+  // ── Render a category profit card ──
+  function catCard(cat, emoji, color, stats){
+    const d = stats[cat] || {sales:0,cost:0,profit:0,qty:0};
+    const margin = d.sales > 0 ? ((d.profit/d.sales)*100).toFixed(1) : '0';
+    return `
+      <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:14px;border-top:3px solid ${color};">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="font-size:24px;">${emoji}</span>
+          <div>
+            <div style="font-size:14px;font-weight:800;">${cat}</div>
+            <div style="font-size:11px;color:var(--t2);">${d.qty} units sold · ${margin}% margin</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="background:var(--s2);border-radius:var(--rs);padding:10px;text-align:center;">
+            <div style="font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Sales</div>
+            <div style="font-size:16px;font-weight:800;color:var(--ac);">${fmt(d.sales)}</div>
+          </div>
+          <div style="background:var(--s2);border-radius:var(--rs);padding:10px;text-align:center;">
+            <div style="font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Net Profit</div>
+            <div style="font-size:16px;font-weight:800;color:var(--ok);">${fmt(d.profit)}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── Render a full period section ──
+  function periodSection(label, emoji, orders, stats){
+    const totalSales  = orders.reduce((s,o)=>s+o.total,0);
+    const totalProfit = orders.reduce((s,o)=>s+o.profit,0);
+    const fastSales   = FAST.reduce((s,c)=>(s+(stats[c]||{}).sales||0),0);
+    const fastProfit  = FAST.reduce((s,c)=>(s+(stats[c]||{}).profit||0),0);
+    const otherSales  = totalSales - fastSales;
+    const otherProfit = totalProfit - fastProfit;
+    const fastPct     = totalProfit > 0 ? ((fastProfit/totalProfit)*100).toFixed(0) : 0;
+
+    return `
+      <div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:15px;font-weight:800;">${emoji} ${label}</div>
+          <div style="font-size:12px;color:var(--t2);">${orders.length} orders · Total: ${fmt(totalSales)}</div>
+        </div>
+
+        <!-- Fast mover categories side by side -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          ${catCard('Softdrinks','🥤','#3d7fff',stats)}
+          ${catCard('Cigarettes','🚬','#ff6b35',stats)}
+        </div>
+
+        <!-- Fast movers combined vs everything else -->
+        <div style="background:var(--s2);border-radius:var(--r);padding:12px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px;">⚡ Fast Movers Combined vs Others</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:120px;background:rgba(61,127,255,.1);border-radius:var(--rs);padding:10px;text-align:center;">
+              <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">⚡ Fast Movers Profit</div>
+              <div style="font-size:18px;font-weight:900;color:var(--ac);">${fmt(fastProfit)}</div>
+              <div style="font-size:11px;color:var(--t3);margin-top:3px;">${fastPct}% of total</div>
+            </div>
+            <div style="flex:1;min-width:120px;background:rgba(139,147,176,.1);border-radius:var(--rs);padding:10px;text-align:center;">
+              <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">🛒 Other Categories</div>
+              <div style="font-size:18px;font-weight:900;color:var(--t2);">${fmt(otherProfit)}</div>
+              <div style="font-size:11px;color:var(--t3);margin-top:3px;">${totalProfit>0?(100-parseInt(fastPct)):0}% of total</div>
+            </div>
+            <div style="flex:1;min-width:120px;background:rgba(46,213,115,.1);border-radius:var(--rs);padding:10px;text-align:center;">
+              <div style="font-size:10px;color:var(--t2);margin-bottom:4px;">💰 Total Net Profit</div>
+              <div style="font-size:18px;font-weight:900;color:var(--ok);">${fmt(totalProfit)}</div>
+              <div style="font-size:11px;color:var(--t3);margin-top:3px;">${orders.length} orders</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profit bar chart -->
+        ${_fastMoverBar(stats, totalSales)}
+      </div>
+      <div style="border-bottom:1px solid var(--bd);margin-bottom:20px;"></div>`;
+  }
+
+  // ── Mini horizontal bar showing profit by category ──
+  function _fastMoverBar(stats, totalSales){
+    if(totalSales <= 0) return '';
+    const cats = Object.entries(stats)
+      .map(([cat, d]) => ({cat, profit:d.profit, sales:d.sales}))
+      .filter(x => x.profit > 0)
+      .sort((a,b) => b.profit - a.profit)
+      .slice(0, 6);
+    if(!cats.length) return '';
+    const maxP = Math.max(...cats.map(x=>x.profit), 1);
+    return `<div style="background:var(--s2);border-radius:var(--r);padding:12px;">
+      <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px;">📊 Profit by Category</div>
+      ${cats.map(x => {
+        const isFast = FAST.includes(x.cat);
+        const color  = x.cat==='Softdrinks'?'var(--ac)':x.cat==='Cigarettes'?'var(--or)':'var(--bd)';
+        const pct    = ((x.profit/maxP)*100).toFixed(0);
+        return `<div style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+            <span style="font-weight:${isFast?'700':'400'};color:${isFast?'var(--tx)':'var(--t2)'};">${isFast?'⚡ ':''}${x.cat}</span>
+            <span style="font-weight:700;color:${isFast?'var(--ok)':'var(--t2)'};">${fmt(x.profit)}</span>
+          </div>
+          <div style="background:var(--bd);border-radius:4px;height:8px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width .4s;"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // ── Assemble the page ──
+  el.innerHTML = `
+    <div style="background:rgba(61,127,255,.08);border:1px solid rgba(61,127,255,.2);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;font-size:13px;line-height:1.6;">
+      ⚡ <b>Fast Movers Report</b> — tracks net profit separately for <b>Softdrinks</b> and <b>Cigarettes</b> vs everything else.<br>
+      <span style="color:var(--t2);font-size:12px;">Make sure products are assigned to the correct category when adding to inventory.</span>
+    </div>
+    ${allOrders.length === 0
+      ? '<div class="emptyst"><div class="emo">📊</div><p>No sales data yet. Make some sales first!</p></div>'
+      : `
+        ${periodSection("Today", "📅", todayOrders, todayStats)}
+        ${periodSection("This Week (Last 7 Days)", "📆", weekOrders, weekStats)}
+        ${periodSection("This Month", "🗓️", monthOrders, monthStats)}
+        ${allOrders.length !== monthOrders.length ? periodSection("All Time", "📈", allOrders, allStats) : ''}
+      `
+    }
+    <div style="margin-top:4px;">
+      <button class="btn bp" style="width:100%;" onclick="printReport()">🖨️ Print / Save PDF</button>
+    </div>`;
+}
+
 let repT='daily';
 function switchRep(t,btn){
   repT=t;
@@ -2133,6 +2309,12 @@ function switchRep(t,btn){
 function renderRep(){
   const el=g('repContent'); if(!el) return;
   const now=new Date();
+
+  /* ── Fast Movers tab — Softdrinks & Cigarettes breakdown ── */
+  if(repT==='fastmovers'){
+    renderFastMovers(el);
+    return;
+  }
 
   /* ── By Product tab ── */
   if(repT==='products'){
