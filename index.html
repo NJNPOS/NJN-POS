@@ -1099,7 +1099,16 @@ function renderPOS(){
   const gm=g('posGridMob');if(gm)gm.innerHTML=html;
 }
 function filterProds(){renderPOS();}
-function posEnter(){const q=g('posSearch').value.trim();const p=S.prods.find(x=>x.bc===q);if(p){addToCart(p.id);g('posSearch').value='';renderPOS();}}
+function posEnter(){
+  const q=g('posSearch').value.trim();
+  const p=S.prods.find(x=>x.bc===q);
+  if(p){
+    addToCart(p.id);
+    g('posSearch').value='';
+    renderPOS();
+    if(isMob()) openCartOv();
+  }
+}
 function addToCart(id){
   const p=S.prods.find(x=>x.id===id);if(!p||p.stock<=0){toast('Out of stock!','warn');return;}
   if(p.sellingMode==='rice'){_openRiceSaleSheet(p);return;}
@@ -2554,51 +2563,101 @@ function stopCam(){
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCam();});
 
 /* ════ GLOBAL BARCODE SCANNER ════ */
-/* USB/Bluetooth scanners type fast then send Enter.
-   We capture globally so cashier never needs to click
-   the search box first — just scan and it adds to cart. */
+/* Works with any USB or Bluetooth HID barcode scanner.
+   Scanners send keystrokes very fast (<50ms apart) then Enter.
+   We capture every keystroke globally, build a buffer, and
+   process it when Enter is received — regardless of what is focused. */
 (function(){
-  let _buf='', _timer=null;
-  document.addEventListener('keydown', function(e){
-    const tag = document.activeElement && document.activeElement.tagName;
-    const inInput = (tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT');
-    // Let POS search box handle itself normally
-    if(document.activeElement && document.activeElement.id==='posSearch') return;
-    // Don't intercept while user is typing in any other field/modal
-    if(inInput) return;
-    // Only intercept on POS page
-    const posPage=g('page-pos');
-    if(!posPage||!posPage.classList.contains('on')) return;
+  let _buf   = '';
+  let _last  = 0;      // timestamp of last keydown
+  let _timer = null;
 
-    if(e.key==='Enter'){
+  document.addEventListener('keydown', function(e){
+    const now = Date.now();
+    const gap = now - _last;
+    _last = now;
+
+    // If the POS page is not active, ignore
+    const posPage = g('page-pos');
+    if(!posPage || !posPage.classList.contains('on')) return;
+
+    // If a modal is open, ignore (don't interfere with camera manual entry etc.)
+    const openModal = document.querySelector('.mov.on');
+    if(openModal) return;
+
+    // --- ENTER key: process whatever is in the buffer ---
+    if(e.key === 'Enter'){
       clearTimeout(_timer);
-      const code=_buf.trim(); _buf='';
-      if(code.length>=3) _globalScan(code);
+      const code = _buf.trim();
+      _buf = '';
+      if(code.length >= 3){
+        e.preventDefault();
+        e.stopPropagation();
+        _doScan(code);
+      }
       return;
     }
-    if(e.key.length===1){
-      _buf+=e.key;
-      clearTimeout(_timer);
-      // Auto-flush after 300ms (fallback if no Enter sent)
-      _timer=setTimeout(()=>{ const c=_buf.trim(); _buf=''; if(c.length>=3)_globalScan(c); },300);
-    }
-  });
 
-  function _globalScan(code){
-    const p=S.prods.find(x=>x.bc===code||String(x.id)===code);
-    if(!p){ toast('Barcode not found: '+code,'warn'); return; }
-    if(p.stock<=0){ toast(p.name+' is out of stock!','warn'); return; }
-    if(p.sellingMode==='rice'){ _openRiceSaleSheet(p); return; }
-    if(p.isBundle&&p.bundleQty>1){ _promptBundleOrSingle(p); return; }
+    // --- Printable character ---
+    if(e.key.length === 1){
+      // If gap since last key > 500ms, this is likely a human typing a new thing — reset buffer
+      if(gap > 500 && _buf.length > 0){
+        _buf = '';
+      }
+      _buf += e.key;
+      clearTimeout(_timer);
+
+      // Auto-flush after 400ms in case scanner sends no Enter
+      _timer = setTimeout(function(){
+        const code = _buf.trim();
+        _buf = '';
+        if(code.length >= 3) _doScan(code);
+      }, 400);
+    }
+  }, true); // useCapture=true so we get it before anything else
+
+  function _doScan(code){
+    // First: find the product
+    const p = S.prods.find(x => x.bc === code || String(x.id) === code);
+
+    if(!p){
+      toast('⚠️ Barcode not found: ' + code, 'warn');
+      return;
+    }
+    if(p.stock <= 0){
+      toast('❌ ' + p.name + ' is out of stock!', 'warn');
+      return;
+    }
+
+    // Add to cart based on selling mode
+    if(p.sellingMode === 'rice'){
+      _openRiceSaleSheet(p);
+      return;
+    }
+    if(p.isBundle && p.bundleQty > 1){
+      _promptBundleOrSingle(p);
+      return;
+    }
+
+    // Regular product — add directly to cart
     addToCart(p.id);
-    // Flash the product card green so cashier sees what was scanned
-    document.querySelectorAll('.pc').forEach(card=>{
-      if(card.getAttribute('onclick')==='addToCart('+p.id+')'){
-        card.style.transition='all .15s';
-        card.style.borderColor='var(--ok)';
-        card.style.background='rgba(46,213,115,.15)';
-        card.style.transform='scale(1.05)';
-        setTimeout(()=>{ card.style.borderColor=''; card.style.background=''; card.style.transform=''; },600);
+
+    // Open the cart overlay on mobile so the user sees the item was added
+    if(isMob()){
+      openCartOv();
+    }
+
+    // Flash the product card green
+    document.querySelectorAll('.pc').forEach(function(card){
+      if(card.getAttribute('onclick') === 'addToCart(' + p.id + ')'){
+        card.style.borderColor = 'var(--ok)';
+        card.style.background  = 'rgba(46,213,115,.2)';
+        card.style.transform   = 'scale(1.06)';
+        setTimeout(function(){
+          card.style.borderColor = '';
+          card.style.background  = '';
+          card.style.transform   = '';
+        }, 700);
       }
     });
   }
