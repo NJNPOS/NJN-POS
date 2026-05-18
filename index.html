@@ -2214,13 +2214,62 @@ function renderRep(){
       const prof=(i.profitPerSale!==undefined)?i.profitPerSale*sc:(i.price-(i.costPerPiece||i.cost||0))*i.qty;
       ps[i.name].prof+=prof;
     }));
-    const rows=Object.values(ps).sort((a,b)=>b.rev-a.rev);
-    el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn bgh bsm" onclick="printReport()">🖨️ Print</button></div><div id="printArea">`+(rows.length?rows.map(r=>`<div class="inv-card" style="margin-bottom:8px;">
-      <div style="font-size:14px;font-weight:800;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--bd);">${r.name}</div>
-      <div class="inv-card-row"><span class="inv-card-lbl">Qty Sold</span><span><b>${r.qty}</b></span></div>
-      <div class="inv-card-row"><span class="inv-card-lbl">Revenue</span><span><b>${fmt(r.rev)}</b></span></div>
-      <div class="inv-card-row"><span class="inv-card-lbl">Net Profit</span><span style="font-weight:800;color:${r.prof>=0?'var(--ok)':'var(--rd)'};">${fmt(r.prof)}</span></div>
-    </div>`).join(''):'<div class="emptyst"><div class="emo">📊</div><p>No sales data yet</p></div>')+'</div>';
+    const rows=Object.values(ps).sort((a,b)=>b.qty-a.qty); // sort by qty sold
+    const maxQty=rows.length?rows[0].qty:1;
+    const medals=['🥇','🥈','🥉'];
+
+    el.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:14px;font-weight:700;">🏆 Most Bought Items</div>
+        <button class="btn bgh bsm" onclick="printReport()">🖨️ Print</button>
+      </div>
+
+      ${!rows.length
+        ? '<div class="emptyst"><div class="emo">📊</div><p>No sales data yet — make some sales first!</p></div>'
+        : `
+        <!-- Top 3 podium -->
+        ${rows.length>=1?`
+        <div style="display:grid;grid-template-columns:repeat(${Math.min(rows.length,3)},1fr);gap:10px;margin-bottom:16px;">
+          ${rows.slice(0,3).map((r,i)=>`
+            <div style="background:${i===0?'rgba(255,180,0,.12)':i===1?'rgba(139,147,176,.08)':'rgba(255,107,53,.08)'};border:1px solid ${i===0?'var(--yw)':i===1?'var(--bd)':'var(--or)'};border-radius:var(--r);padding:14px;text-align:center;">
+              <div style="font-size:28px;margin-bottom:4px;">${medals[i]||'🎖️'}</div>
+              <div style="font-size:13px;font-weight:800;margin-bottom:6px;line-height:1.3;">${r.name}</div>
+              <div style="font-size:22px;font-weight:900;color:${i===0?'var(--yw)':i===1?'var(--t2)':'var(--or)'};">${r.qty}</div>
+              <div style="font-size:11px;color:var(--t2);">units sold</div>
+              <div style="font-size:13px;font-weight:700;color:var(--ok);margin-top:4px;">${fmt(r.prof)}</div>
+              <div style="font-size:10px;color:var(--t3);">profit</div>
+            </div>`).join('')}
+        </div>`:''
+        }
+
+        <!-- Full ranked list with bar chart -->
+        <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">All Products by Units Sold</div>
+        <div id="printArea">
+          ${rows.map((r,i)=>{
+            const barPct = ((r.qty/maxQty)*100).toFixed(0);
+            const barColor = i===0?'var(--yw)':i===1?'var(--t2)':i===2?'var(--or)':'var(--ac)';
+            return `<div class="inv-card" style="margin-bottom:8px;padding:12px 14px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <span style="font-size:18px;flex-shrink:0;">${medals[i]||'#'+(i+1)}</span>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.name}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                  <div style="font-size:18px;font-weight:900;">${r.qty}<span style="font-size:11px;color:var(--t2);font-weight:400;"> units</span></div>
+                </div>
+              </div>
+              <!-- Progress bar -->
+              <div style="background:var(--bd);border-radius:4px;height:6px;margin-bottom:8px;overflow:hidden;">
+                <div style="height:100%;width:${barPct}%;background:${barColor};border-radius:4px;transition:width .4s;"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t2);">
+                <span>Revenue: <b style="color:var(--tx);">${fmt(r.rev)}</b></span>
+                <span>Profit: <b style="color:${r.prof>=0?'var(--ok)':'var(--rd)'};">${fmt(r.prof)}</b></span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      `}`;
     return;
   }
   let filtered,label,periodLabel;
@@ -2503,6 +2552,57 @@ function stopCam(){
   const vid=g('camVid');if(vid)vid.srcObject=null;closeMod('mCam');
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCam();});
+
+/* ════ GLOBAL BARCODE SCANNER ════ */
+/* USB/Bluetooth scanners type fast then send Enter.
+   We capture globally so cashier never needs to click
+   the search box first — just scan and it adds to cart. */
+(function(){
+  let _buf='', _timer=null;
+  document.addEventListener('keydown', function(e){
+    const tag = document.activeElement && document.activeElement.tagName;
+    const inInput = (tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT');
+    // Let POS search box handle itself normally
+    if(document.activeElement && document.activeElement.id==='posSearch') return;
+    // Don't intercept while user is typing in any other field/modal
+    if(inInput) return;
+    // Only intercept on POS page
+    const posPage=g('page-pos');
+    if(!posPage||!posPage.classList.contains('on')) return;
+
+    if(e.key==='Enter'){
+      clearTimeout(_timer);
+      const code=_buf.trim(); _buf='';
+      if(code.length>=3) _globalScan(code);
+      return;
+    }
+    if(e.key.length===1){
+      _buf+=e.key;
+      clearTimeout(_timer);
+      // Auto-flush after 300ms (fallback if no Enter sent)
+      _timer=setTimeout(()=>{ const c=_buf.trim(); _buf=''; if(c.length>=3)_globalScan(c); },300);
+    }
+  });
+
+  function _globalScan(code){
+    const p=S.prods.find(x=>x.bc===code||String(x.id)===code);
+    if(!p){ toast('Barcode not found: '+code,'warn'); return; }
+    if(p.stock<=0){ toast(p.name+' is out of stock!','warn'); return; }
+    if(p.sellingMode==='rice'){ _openRiceSaleSheet(p); return; }
+    if(p.isBundle&&p.bundleQty>1){ _promptBundleOrSingle(p); return; }
+    addToCart(p.id);
+    // Flash the product card green so cashier sees what was scanned
+    document.querySelectorAll('.pc').forEach(card=>{
+      if(card.getAttribute('onclick')==='addToCart('+p.id+')'){
+        card.style.transition='all .15s';
+        card.style.borderColor='var(--ok)';
+        card.style.background='rgba(46,213,115,.15)';
+        card.style.transform='scale(1.05)';
+        setTimeout(()=>{ card.style.borderColor=''; card.style.background=''; card.style.transform=''; },600);
+      }
+    });
+  }
+})();
 
 /* ════ BARCODE LOOKUP ════ */
 async function _lookupBarcode(code){
