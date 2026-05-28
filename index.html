@@ -944,13 +944,32 @@ tbody td{padding:11px 14px;font-size:13px;border-top:1px solid var(--bd);vertica
       </div>
       <!-- CASH-IN -->
       <div id="esvcCashin" style="display:none;">
-        <div style="background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--t2);">Customer gives you cash → you send GCash to their number.<br><span style="color:var(--yw);">GCash wallet decreases by cash-in amount.</span></div>
+        <div style="background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--t2);">
+          Customer gives you cash → you send GCash to their number.<br>
+          <span style="color:var(--yw);">• <b>Cash Register:</b> Register ↑ by amount+fee, Wallet ↓<br>• <b>Others:</b> Wallet ↓ only (cash goes to your pocket)</span>
+        </div>
         <div class="ig"><label>Customer GCash Number</label><input type="tel" id="cashinNumber" placeholder="09XX-XXX-XXXX" inputmode="tel"></div>
         <div class="ig"><label>Cash-In Amount (₱)</label><input type="number" id="cashinAmt" placeholder="e.g. 500" inputmode="decimal" oninput="calcGcashFee('cashin')"></div>
+        <!-- Cash destination selector -->
+        <div style="background:var(--s2);border-radius:var(--rs);padding:12px 14px;margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px;">💰 Cash Goes To</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button type="button" id="ciDestRegBtn" onclick="selectCashinDest('register')"
+              style="padding:14px 10px;border-radius:var(--rs);border:2px solid var(--ac);background:rgba(61,127,255,.15);color:var(--ac);font-size:13px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;">
+              🏦 Cash Register<br><span style="font-size:10px;font-weight:400;opacity:.8;">Register ↑ amount+fee</span>
+            </button>
+            <button type="button" id="ciDestOthBtn" onclick="selectCashinDest('others')"
+              style="padding:14px 10px;border-radius:var(--rs);border:2px solid var(--bd);background:var(--s3);color:var(--t2);font-size:13px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;">
+              👤 Others<br><span style="font-size:10px;font-weight:400;opacity:.8;">To your pocket</span>
+            </button>
+          </div>
+          <input type="hidden" id="cashinDest" value="register">
+        </div>
         <div id="cashinFeeBox" style="display:none;background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);border-radius:var(--rs);padding:12px 14px;font-size:13px;margin-bottom:14px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Amount</span><span id="cashinAmtDisp" style="font-weight:700;"></span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Cash-In Amount</span><span id="cashinAmtDisp" style="font-weight:700;"></span></div>
           <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Your Service Fee</span><span id="cashinFeeDisp" style="font-weight:800;color:var(--ok);"></span></div>
-          <div style="display:flex;justify-content:space-between;font-size:15px;border-top:1px solid var(--bd);padding-top:8px;margin-top:4px;"><span style="font-weight:700;">Customer Pays</span><span id="cashinTotalDisp" style="font-weight:900;color:var(--ac);"></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;border-top:1px solid var(--bd);padding-top:8px;margin-top:4px;"><span style="font-weight:700;">Customer Pays Total</span><span id="cashinTotalDisp" style="font-weight:900;color:var(--ac);"></span></div>
+          <div id="cashinRegNote" style="margin-top:8px;padding:8px 10px;background:rgba(61,127,255,.08);border-radius:var(--rs);font-size:12px;color:var(--t2);"></div>
         </div>
       </div>
       <!-- CASH-OUT -->
@@ -2988,10 +3007,27 @@ function openEsvc(type){
   ['loadAmt','cashinAmt','cashoutAmt','padalaAmt','billsAmt','topupAmt'].forEach(id=>{const el=g(id);if(el)el.value='';});
   ['loadFeeBox','cashinFeeBox','cashoutFeeBox','padalaFeeBox','billsFeeBox'].forEach(id=>{const el=g(id);if(el)el.style.display='none';});
   const cs=g('cashoutSource');if(cs)cs.value='register';
-  // Reset cash source buttons
+  const cd=g('cashinDest');if(cd)cd.value='register';
+  // Reset cash source/dest buttons
   selectCashSource('register');
+  selectCashinDest('register');
   const tp=g('topupPreview');if(tp)tp.style.display='none';
   openMod('mEsvc');
+}
+
+function selectCashinDest(dest){
+  g('cashinDest').value=dest;
+  const regBtn=g('ciDestRegBtn'), othBtn=g('ciDestOthBtn');
+  if(!regBtn||!othBtn)return;
+  if(dest==='register'){
+    regBtn.style.border='2px solid var(--ac)';regBtn.style.background='rgba(61,127,255,.15)';regBtn.style.color='var(--ac)';
+    othBtn.style.border='2px solid var(--bd)';othBtn.style.background='var(--s3)';othBtn.style.color='var(--t2)';
+  } else {
+    othBtn.style.border='2px solid var(--or)';othBtn.style.background='rgba(255,107,53,.15)';othBtn.style.color='var(--or)';
+    regBtn.style.border='2px solid var(--bd)';regBtn.style.background='var(--s3)';regBtn.style.color='var(--t2)';
+  }
+  // Refresh the fee box note
+  calcGcashFee('cashin');
 }
 
 function selectCashSource(source){
@@ -3035,6 +3071,18 @@ function calcGcashFee(type){
   g(type+'AmtDisp').textContent=fmt(amt);
   g(type+'FeeDisp').textContent=fmt(fee)+' (your earnings)';
   g(type+'TotalDisp').textContent=fmt(type==='cashout'?amt:amt+fee);
+  // For cash-in: show what happens to register
+  if(type==='cashin'){
+    const dest=g('cashinDest')&&g('cashinDest').value;
+    const note=g('cashinRegNote');
+    if(note){
+      if(dest==='register'){
+        note.innerHTML='🏦 Cash Register will increase by <b style="color:var(--ok);">'+fmt(amt+fee)+'</b> ('+fmt(amt)+' + '+fmt(fee)+' fee)';
+      } else {
+        note.innerHTML='👤 Cash goes to your pocket — register unchanged';
+      }
+    }
+  }
 }
 function calcBillsFee(){
   const amt=parseFloat(g('billsAmt').value)||0;
@@ -3079,10 +3127,16 @@ function processEsvc(){
     const number=g('cashinNumber').value.trim();
     if(!number){toast('Enter customer GCash number','warn');return;}
     const fee=getGcashFee(amt);
-    // WALLET CHECK
+    const dest=g('cashinDest').value||'register';
+    // Wallet always needed — you send GCash out regardless of dest
     if(wallet<amt){_showWalletWarning('cashin',amt,wallet);return;}
-    Object.assign(txn,{number,amount:amt,fee,total:amt+fee,label:'GCash Cash-In ₱'+amt.toFixed(0)});
-    S.gcashWallet=wallet-amt;
+    Object.assign(txn,{number,amount:amt,fee,total:amt+fee,dest,
+      label:'GCash Cash-In ₱'+amt.toFixed(0)+' ('+dest+')'});
+    S.gcashWallet=wallet-amt; // wallet always decreases
+    if(dest==='register'){
+      S.cashReg=(S.cashReg||0)+(amt+fee); // register increases by amount + fee
+    }
+    // dest==='others': cash goes to pocket, register unchanged
   }
   else if(type==='cashout'){
     const amt=parseFloat(g('cashoutAmt').value)||0;
@@ -3319,7 +3373,12 @@ function renderEsvcs(){
     if(!all.length){histEl.innerHTML='<div class="emptyst"><div class="emo">📱</div><p>No transactions yet</p></div>';return;}
     function getBalanceNote(t){
       if(t.type==='topup')return`<span style="color:var(--ok);">Wallet +${fmt(t.amount)}</span> · <span style="color:var(--rd);">Register -${fmt(t.amount)}</span>`;
-      if(t.type==='cashin')return`<span style="color:var(--rd);">Wallet -${fmt(t.amount)}</span>`;
+      if(t.type==='cashin'){
+        const destLabel=t.dest==='register'
+          ?`<span style="color:var(--rd);">Wallet -${fmt(t.amount)}</span> · <span style="color:var(--ok);">Register +${fmt(t.amount+t.fee)}</span>`
+          :`<span style="color:var(--rd);">Wallet -${fmt(t.amount)}</span> · <span style="color:var(--t2);">Cash to pocket</span>`;
+        return destLabel;
+      }
       if(t.type==='cashout'){
         if(t.source==='register'){
           return`<span style="color:var(--ok);">Wallet +${fmt(t.amount)}</span> · <span style="color:var(--rd);">Register -${fmt(t.amount)}</span>`;
@@ -3400,7 +3459,8 @@ function renderEsvcReport(el){
     load.forEach(t=>{if(!networks[t.network])networks[t.network]={count:0,fees:0,vol:0};networks[t.network].count++;networks[t.network].fees+=(t.fee||0);networks[t.network].vol+=t.amount;});
     const svcRows=[
       {label:'📱 Load',count:load.length,fees:feeLoad,vol:load.reduce((s,t)=>s+t.amount,0)},
-      {label:'📲 Cash-In',count:cashin.length,fees:feeCashin,vol:cashin.reduce((s,t)=>s+t.amount,0)},
+      {label:'📲 Cash-In (Register)',count:cashin.filter(t=>t.dest==='register'||!t.dest).length,fees:cashin.filter(t=>t.dest==='register'||!t.dest).reduce((s,t)=>s+(t.fee||0),0),vol:cashin.filter(t=>t.dest==='register'||!t.dest).reduce((s,t)=>s+t.amount,0)},
+      {label:'📲 Cash-In (Others)',count:cashin.filter(t=>t.dest==='others').length,fees:cashin.filter(t=>t.dest==='others').reduce((s,t)=>s+(t.fee||0),0),vol:cashin.filter(t=>t.dest==='others').reduce((s,t)=>s+t.amount,0)},
       {label:'💵 Cash-Out',count:cashout.length,fees:feeCashout,vol:cashout.reduce((s,t)=>s+t.amount,0)},
       {label:'📤 Padala',count:padala.length,fees:feePadala,vol:padala.reduce((s,t)=>s+t.amount,0)},
       {label:'🏦 Bills',count:bills.length,fees:feeBills,vol:bills.reduce((s,t)=>s+t.amount,0)},
