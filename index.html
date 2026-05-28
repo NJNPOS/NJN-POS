@@ -313,6 +313,7 @@ tbody td{padding:11px 14px;font-size:13px;border-top:1px solid var(--bd);vertica
     <div class="nav-grp">
       <div class="nav-lbl">Management</div>
       <div class="ni" onclick="gp('orders');closeSB()"><span class="nii">🧾</span>Orders</div>
+      <div class="ni" onclick="gp('eservices');closeSB()"><span class="nii">📱</span>E-Services</div>
       <div class="ni" onclick="gp('deliveries');closeSB()"><span class="nii">🚚</span>Deliveries</div>
       <div class="ni" onclick="gp('customers');closeSB()"><span class="nii">👥</span>Customers</div>
       <div class="ni" onclick="gp('expenses');closeSB()"><span class="nii">💸</span>Expenses</div>
@@ -352,6 +353,12 @@ tbody td{padding:11px 14px;font-size:13px;border-top:1px solid var(--bd);vertica
           <div class="sc sc-g"><div class="sl">Today's Profit</div><div class="sv" id="d-profit">₱0</div><div class="ss" id="d-margin">0%</div><div class="si">📈</div></div>
           <div class="sc sc-o"><div class="sl">Products</div><div class="sv" id="d-prods">0</div><div class="ss" id="d-low">0 low stock</div><div class="si">📦</div></div>
           <div class="sc sc-y"><div class="sl">Expenses</div><div class="sv" id="d-exp">₱0</div><div class="ss" id="d-expc">today</div><div class="si">💸</div></div>
+          <div class="sc" style="border-top:3px solid var(--ac);grid-column:span 2;cursor:pointer;" onclick="gp('eservices')">
+            <div class="sl">📱 E-Services Income Today</div>
+            <div class="sv" id="d-esvc">₱0</div>
+            <div class="ss" id="d-esvc-sub">0 transactions · tap to view</div>
+            <div class="si">📱</div>
+          </div>
         </div>
         <div class="twocol">
           <div class="card"><div style="font-weight:700;font-size:14px;margin-bottom:6px;">📊 Sales This Week</div><div class="cbar-w" id="wchart"></div></div>
@@ -423,6 +430,37 @@ tbody td{padding:11px 14px;font-size:13px;border-top:1px solid var(--bd);vertica
         </div>
       </div>
 
+      <!-- E-SERVICES -->
+      <div class="page" id="page-eservices">
+        <div class="sh"><div><div class="stit">📱 E-Services</div><div class="ssub">Load, GCash &amp; Bills Payment</div></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
+          <div class="sc sc-g" style="cursor:pointer;" onclick="openWalletEdit()">
+            <div class="sl">GCash Wallet</div><div class="sv" id="gcashWalletBal">₱0</div>
+            <div class="ss">Tap to update</div><div class="si">📱</div>
+          </div>
+          <div class="sc sc-b" style="cursor:pointer;" onclick="openCashEdit()">
+            <div class="sl">Cash Register</div><div class="sv" id="cashRegBal">₱0</div>
+            <div class="ss">Tap to update</div><div class="si">💵</div>
+          </div>
+        </div>
+        <div id="walletWarning" style="display:none;background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);border-radius:var(--rs);padding:10px 14px;margin-bottom:12px;font-size:13px;align-items:center;justify-content:space-between;gap:10px;">
+          <span>⚠️ GCash wallet is low! Top up to continue.</span>
+          <button onclick="openEsvc('topup')" style="background:var(--rd);border:none;color:#fff;padding:8px 14px;border-radius:var(--rs);font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;">💳 Top Up Now</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+          <button class="btn bp" onclick="openEsvc('load')" style="padding:16px;font-size:13px;flex-direction:column;gap:5px;height:auto;"><span style="font-size:26px;">📱</span>Load</button>
+          <button class="btn" onclick="openEsvc('cashin')" style="background:rgba(0,212,170,.15);border:2px solid var(--g);color:var(--g);padding:16px;font-size:13px;flex-direction:column;gap:5px;height:auto;"><span style="font-size:26px;">📲</span>Cash-In</button>
+          <button class="btn" onclick="openEsvc('cashout')" style="background:rgba(255,107,53,.15);border:2px solid var(--or);color:var(--or);padding:16px;font-size:13px;flex-direction:column;gap:5px;height:auto;"><span style="font-size:26px;">💵</span>Cash-Out</button>
+          <button class="btn" onclick="openEsvc('padala')" style="background:rgba(61,127,255,.15);border:2px solid var(--ac);color:var(--ac);padding:16px;font-size:13px;flex-direction:column;gap:5px;height:auto;"><span style="font-size:26px;">📤</span>Padala</button>
+          <button class="btn" onclick="openEsvc('bills')" style="background:rgba(255,180,0,.15);border:2px solid var(--yw);color:var(--yw);padding:16px;font-size:13px;flex-direction:column;gap:5px;height:auto;"><span style="font-size:26px;">🏦</span>Bills Payment</button>
+          <button class="btn" onclick="openEsvc('topup')" style="background:rgba(255,71,87,.15);border:2px solid var(--rd);color:var(--rd);padding:16px;font-size:13px;flex-direction:column;gap:5px;height:auto;"><span style="font-size:26px;">💳</span>Top-Up Wallet</button>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Today's E-Services</div>
+        <div id="esvcsToday"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--t2);margin:16px 0 10px;text-transform:uppercase;letter-spacing:.5px;">Transaction History</div>
+        <div id="esvcsHistory"></div>
+      </div>
+
       <!-- ORDERS -->
       <div class="page" id="page-orders">
         <div class="sh"><div class="stit">Orders History</div></div>
@@ -460,6 +498,7 @@ tbody td{padding:11px 14px;font-size:13px;border-top:1px solid var(--bd);vertica
           <button class="tbb" onclick="switchRep('monthly',this)">Monthly</button>
           <button class="tbb" onclick="switchRep('products',this)">Products</button>
           <button class="tbb" onclick="switchRep('fastmovers',this)">⚡ Fast Movers</button>
+          <button class="tbb" onclick="switchRep('eservices',this)">📱 E-Services</button>
         </div>
         <div id="repContent"></div>
       </div>
@@ -517,6 +556,7 @@ tbody td{padding:11px 14px;font-size:13px;border-top:1px solid var(--bd);vertica
       <button class="bnb" id="bn-pos" onclick="gp('pos')"><span class="bi">🛒</span><span>POS</span></button>
       <button class="bnb" id="bn-inventory" onclick="gp('inventory')"><span class="bi">📦</span><span>Stock</span></button>
       <button class="bnb" id="bn-reports" onclick="gp('reports')"><span class="bi">📈</span><span>Reports</span></button>
+      <button class="bnb" id="bn-eservices" onclick="gp('eservices')"><span class="bi">📱</span><span>E-Svc</span></button>
       <button class="bnb" id="bn-more" onclick="toggleSB()"><span class="bi">☰</span><span>More</span></button>
     </div>
   </div>
@@ -882,6 +922,131 @@ tbody td{padding:11px 14px;font-size:13px;border-top:1px solid var(--bd);vertica
 
 <div id="toasts"></div>
 
+<!-- E-SERVICES MODAL -->
+<div class="mov" id="mEsvc">
+  <div class="modal">
+    <div class="mhnd"></div>
+    <div class="mhd"><div class="mtit" id="esvcTitle">E-Service</div><button class="mxbtn" onclick="closeMod('mEsvc')">✕</button></div>
+    <div class="mbody">
+      <!-- LOAD -->
+      <div id="esvcLoad">
+        <div style="background:rgba(61,127,255,.08);border:1px solid rgba(61,127,255,.2);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--t2);">Customer gives you cash → you load their phone via GCash.<br><span style="color:var(--yw);">GCash wallet decreases by load amount.</span></div>
+        <div class="ig"><label>Network</label>
+          <select id="loadNetwork"><option>Globe</option><option>Smart</option><option>TNT</option><option>TM</option><option>Sun</option><option>DITO</option><option>GOMO</option></select>
+        </div>
+        <div class="ig"><label>Customer Mobile Number</label><input type="tel" id="loadNumber" placeholder="09XX-XXX-XXXX" inputmode="tel"></div>
+        <div class="ig"><label>Load Amount (₱)</label><input type="number" id="loadAmt" placeholder="e.g. 100" inputmode="decimal" oninput="calcLoadFee()"></div>
+        <div id="loadFeeBox" style="display:none;background:rgba(61,127,255,.08);border:1px solid rgba(61,127,255,.2);border-radius:var(--rs);padding:12px 14px;font-size:13px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Load Amount</span><span id="loadAmtDisp" style="font-weight:700;"></span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Your Service Fee</span><span id="loadFeeDisp" style="font-weight:800;color:var(--ok);"></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;border-top:1px solid var(--bd);padding-top:8px;margin-top:4px;"><span style="font-weight:700;">Customer Pays</span><span id="loadTotalDisp" style="font-weight:900;color:var(--ac);"></span></div>
+        </div>
+      </div>
+      <!-- CASH-IN -->
+      <div id="esvcCashin" style="display:none;">
+        <div style="background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--t2);">Customer gives you cash → you send GCash to their number.<br><span style="color:var(--yw);">GCash wallet decreases by cash-in amount.</span></div>
+        <div class="ig"><label>Customer GCash Number</label><input type="tel" id="cashinNumber" placeholder="09XX-XXX-XXXX" inputmode="tel"></div>
+        <div class="ig"><label>Cash-In Amount (₱)</label><input type="number" id="cashinAmt" placeholder="e.g. 500" inputmode="decimal" oninput="calcGcashFee('cashin')"></div>
+        <div id="cashinFeeBox" style="display:none;background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);border-radius:var(--rs);padding:12px 14px;font-size:13px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Amount</span><span id="cashinAmtDisp" style="font-weight:700;"></span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Your Service Fee</span><span id="cashinFeeDisp" style="font-weight:800;color:var(--ok);"></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;border-top:1px solid var(--bd);padding-top:8px;margin-top:4px;"><span style="font-weight:700;">Customer Pays</span><span id="cashinTotalDisp" style="font-weight:900;color:var(--ac);"></span></div>
+        </div>
+      </div>
+      <!-- CASH-OUT -->
+      <div id="esvcCashout" style="display:none;">
+        <div style="background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.2);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--t2);">Customer sends you GCash → you give them cash.<br>
+          <span style="color:var(--yw);">• <b>Cash Register:</b> Wallet ↑, Register ↓<br>• <b>Others:</b> No change to balances — just logged</span></div>
+        <div class="ig"><label>Customer GCash Number</label><input type="tel" id="cashoutNumber" placeholder="09XX-XXX-XXXX" inputmode="tel"></div>
+        <div class="ig"><label>Cash-Out Amount (₱)</label><input type="number" id="cashoutAmt" placeholder="e.g. 500" inputmode="decimal" oninput="calcGcashFee('cashout')"></div>
+        <div style="background:var(--s2);border-radius:var(--rs);padding:12px 14px;margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px;">💵 Cash Source</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button type="button" id="coSrcRegBtn"
+              onclick="selectCashSource('register')"
+              style="padding:14px 10px;border-radius:var(--rs);border:2px solid var(--ac);background:rgba(61,127,255,.15);color:var(--ac);font-size:13px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;">
+              🏦 Cash Register<br><span style="font-size:10px;font-weight:400;opacity:.8;">Wallet ↑ Register ↓</span>
+            </button>
+            <button type="button" id="coSrcOthBtn"
+              onclick="selectCashSource('others')"
+              style="padding:14px 10px;border-radius:var(--rs);border:2px solid var(--bd);background:var(--s3);color:var(--t2);font-size:13px;font-weight:700;cursor:pointer;text-align:center;line-height:1.4;">
+              👤 Others<br><span style="font-size:10px;font-weight:400;opacity:.8;">No balance change</span>
+            </button>
+          </div>
+          <input type="hidden" id="cashoutSource" value="register">
+        </div>
+        <div id="cashoutFeeBox" style="display:none;background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.2);border-radius:var(--rs);padding:12px 14px;font-size:13px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Amount</span><span id="cashoutAmtDisp" style="font-weight:700;"></span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Your Service Fee</span><span id="cashoutFeeDisp" style="font-weight:800;color:var(--ok);"></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;border-top:1px solid var(--bd);padding-top:8px;margin-top:4px;"><span style="font-weight:700;">Customer Gets Cash</span><span id="cashoutTotalDisp" style="font-weight:900;color:var(--ac);"></span></div>
+        </div>
+      </div>
+      <!-- PADALA -->
+      <div id="esvcPadala" style="display:none;">
+        <div style="background:rgba(61,127,255,.08);border:1px solid rgba(61,127,255,.2);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--t2);">Customer gives cash → you send GCash to another number.<br><span style="color:var(--yw);">GCash wallet decreases by send amount.</span></div>
+        <div class="ig"><label>Sender Name</label><input type="text" id="padalaFrom" placeholder="e.g. Maria Santos" autocomplete="off"></div>
+        <div class="ig"><label>Recipient GCash Number</label><input type="tel" id="padalaTo" placeholder="09XX-XXX-XXXX" inputmode="tel"></div>
+        <div class="ig"><label>Amount to Send (₱)</label><input type="number" id="padalaAmt" placeholder="e.g. 500" inputmode="decimal" oninput="calcGcashFee('padala')"></div>
+        <div id="padalaFeeBox" style="display:none;background:rgba(61,127,255,.08);border:1px solid rgba(61,127,255,.2);border-radius:var(--rs);padding:12px 14px;font-size:13px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Send Amount</span><span id="padalaAmtDisp" style="font-weight:700;"></span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Your Service Fee</span><span id="padalaFeeDisp" style="font-weight:800;color:var(--ok);"></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;border-top:1px solid var(--bd);padding-top:8px;margin-top:4px;"><span style="font-weight:700;">Customer Pays</span><span id="padalaTotalDisp" style="font-weight:900;color:var(--ac);"></span></div>
+        </div>
+      </div>
+      <!-- BILLS -->
+      <div id="esvcBills" style="display:none;">
+        <div style="background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.2);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--t2);">Service fee: <b style="color:var(--yw);">₱25</b> per transaction.<br><span style="color:var(--yw);">GCash wallet decreases by bill amount.</span></div>
+        <div class="ig"><label>Biller Name</label><input type="text" id="billsBiller" placeholder="e.g. Meralco, PLDT, Globe..." autocomplete="off"></div>
+        <div class="ig"><label>Account Name / Subscriber</label><input type="text" id="billsAcctName" placeholder="e.g. Juan Dela Cruz" autocomplete="off"></div>
+        <div class="ig"><label>Account No. / Reference</label><input type="text" id="billsAcctNo" placeholder="e.g. 1234567890" autocomplete="off"></div>
+        <div class="ig"><label>Bill Amount (₱)</label><input type="number" id="billsAmt" placeholder="e.g. 1500" inputmode="decimal" oninput="calcBillsFee()"></div>
+        <div id="billsFeeBox" style="display:none;background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.2);border-radius:var(--rs);padding:12px 14px;font-size:13px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Bill Amount</span><span id="billsAmtDisp" style="font-weight:700;"></span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Service Fee</span><span id="billsFeeDisp" style="font-weight:800;color:var(--ok);"></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;border-top:1px solid var(--bd);padding-top:8px;margin-top:4px;"><span style="font-weight:700;">Customer Pays</span><span id="billsTotalDisp" style="font-weight:900;color:var(--ac);"></span></div>
+        </div>
+      </div>
+      <!-- TOP-UP -->
+      <div id="esvcTopup" style="display:none;">
+        <div style="background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--t2);">Convert cash to GCash. <b>Cash register decreases</b>, <b>GCash wallet increases</b> by top-up amount.</div>
+        <div class="ig"><label>Top-Up Amount (₱)</label><input type="number" id="topupAmt" placeholder="e.g. 2000" inputmode="decimal" oninput="calcTopupPreview()"></div>
+        <div id="topupPreview" style="display:none;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:var(--rs);padding:12px 14px;font-size:13px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--t2);">Cash Register After</span><span id="topupRegAfter" style="font-weight:700;"></span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--t2);">GCash Wallet After</span><span id="topupWalAfter" style="font-weight:700;color:var(--ok);"></span></div>
+        </div>
+        <div class="ig"><label>Notes (optional)</label><input type="text" id="topupNote" placeholder="e.g. topped up via BDO" autocomplete="off"></div>
+      </div>
+      <div class="ig"><label>Notes (optional)</label><input type="text" id="esvcNotes" placeholder="e.g. customer name, ref no." autocomplete="off"></div>
+    </div>
+    <div class="mfoot"><button class="btn bgh" onclick="closeMod('mEsvc')">Cancel</button><button class="btn bp" onclick="processEsvc()">Process Transaction</button></div>
+  </div>
+</div>
+
+<!-- E-SERVICES RECEIPT -->
+<div class="mov" id="mEsvcRec">
+  <div class="modal" style="max-width:400px;">
+    <div class="mhnd"></div>
+    <div class="mhd"><div class="mtit">E-Services Receipt</div><button class="mxbtn" onclick="closeMod('mEsvcRec')">✕</button></div>
+    <div class="mbody" style="display:flex;justify-content:center;overflow-x:auto;"><div id="esvcRecContent"></div></div>
+    <div class="mfoot"><button class="btn bgh" onclick="closeMod('mEsvcRec')">Close</button><button class="btn bp" onclick="printEsvcRec()">🖨️ Print</button></div>
+  </div>
+</div>
+
+<!-- WALLET/CASH EDIT MODAL -->
+<div class="mov" id="mWallet">
+  <div class="modal" style="max-width:400px;">
+    <div class="mhnd"></div>
+    <div class="mhd"><div class="mtit" id="walletModalTitle">Update Balance</div><button class="mxbtn" onclick="closeMod('mWallet')">✕</button></div>
+    <div class="mbody">
+      <div style="font-size:13px;color:var(--t2);margin-bottom:14px;line-height:1.5;">Enter your current actual balance to sync the system.</div>
+      <div class="ig"><label id="walletModalLabel">Balance (₱)</label><input type="number" id="walletAmt" inputmode="decimal"></div>
+    </div>
+    <div class="mfoot"><button class="btn bgh" onclick="closeMod('mWallet')">Cancel</button><button class="btn bp" onclick="saveWalletBal()">Save</button></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
 <script>
 /* ════ STATE ════ */
 const S = {
@@ -904,7 +1069,7 @@ const S = {
     {id:1,name:'Maria Santos',ph:'09171234567',addr:'Blk 1 Lot 2',debt:150,limit:500,tx:[]},
     {id:2,name:'Jose Reyes',ph:'09281234567',addr:'Blk 3 Lot 5',debt:0,limit:300,tx:[]},
   ],
-  exps:[],cart:[],pay:'cash',
+  exps:[],cart:[],pay:'cash',esvcs:[],gcashWallet:0,cashReg:0,
   editP:null,editC:null,repT:'daily',
   camStream:null,camActive:false,camMode:'pos',_facing:'environment',_zxReader:null
 };
@@ -933,7 +1098,7 @@ document.addEventListener('click',e=>{
 const DB_KEY='njnpos_v3';
 function saveData(){
   try{
-    localStorage.setItem(DB_KEY,JSON.stringify({prods:S.prods,orders:S.orders,dels:S.dels,custs:S.custs,exps:S.exps,cfg:S.cfg,savedAt:new Date().toISOString()}));
+    localStorage.setItem(DB_KEY,JSON.stringify({prods:S.prods,orders:S.orders,dels:S.dels,custs:S.custs,exps:S.exps,esvcs:S.esvcs,gcashWallet:S.gcashWallet,cashReg:S.cashReg,cfg:S.cfg,savedAt:new Date().toISOString()}));
     const b=g('syncBadge');if(b){b.textContent='✅ Saved';b.style.color='var(--ok)';setTimeout(()=>{b.textContent='';},2000);}
   }catch(e){console.warn('Save failed',e);}
 }
@@ -947,6 +1112,9 @@ function loadData(){
     if(snap.custs&&Array.isArray(snap.custs))S.custs=snap.custs;
     if(snap.exps&&Array.isArray(snap.exps))S.exps=snap.exps;
     if(snap.cfg)S.cfg=Object.assign({},S.cfg,snap.cfg);
+    if(snap.esvcs&&Array.isArray(snap.esvcs))S.esvcs=snap.esvcs;
+    if(snap.gcashWallet!==undefined)S.gcashWallet=snap.gcashWallet;
+    if(snap.cashReg!==undefined)S.cashReg=snap.cashReg;
     return true;
   }catch(e){return false;}
 }
@@ -1026,7 +1194,7 @@ function doLogin(){
 function doLogout(){stopCam();g('loginWrap').style.display='flex';g('app').style.display='none';}
 
 /* ════ NAVIGATION ════ */
-const pname={dashboard:'Dashboard',pos:'Point of Sale',inventory:'Inventory',orders:'Orders',deliveries:'Deliveries',customers:'Customers',expenses:'Expenses',reports:'Financial Reports',catalog:'Catalog',settings:'Settings'};
+const pname={dashboard:'Dashboard',pos:'Point of Sale',inventory:'Inventory',orders:'Orders',eservices:'E-Services',deliveries:'Deliveries',customers:'Customers',expenses:'Expenses',reports:'Financial Reports',catalog:'Catalog',settings:'Settings'};
 function gp(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
@@ -1035,7 +1203,7 @@ function gp(id){
   const ni=document.querySelector(`.ni[onclick*="'${id}'"]`);if(ni)ni.classList.add('on');
   const bn=g('bn-'+id);if(bn)bn.classList.add('on');
   g('ptitle').textContent=pname[id]||id;
-  const fns={dashboard:refreshDash,pos:renderPOS,inventory:renderInv,orders:renderOrds,deliveries:renderDels,customers:renderCusts,expenses:renderExps,reports:renderRep,catalog:renderCat,settings:_updDataStats};
+  const fns={dashboard:refreshDash,pos:renderPOS,inventory:renderInv,orders:renderOrds,eservices:()=>{renderEsvcs();updBalanceDisplay();},deliveries:renderDels,customers:renderCusts,expenses:renderExps,reports:renderRep,catalog:renderCat,settings:_updDataStats};
   if(fns[id])fns[id]();
   g('pa').scrollTop=0;
 }
@@ -1055,6 +1223,12 @@ function refreshDash(){
   g('d-prods').textContent=S.prods.length;g('d-low').textContent=low+' low stock';
   g('d-exp').textContent=fmt(todE);g('d-expc').textContent='today';
   renderWChart();renderAlerts();renderRecOrds();renderExpItems();updBadge();
+  // E-Services today income
+  const todEsvc=(S.esvcs||[]).filter(e=>new Date(e.date).toDateString()===today);
+  const esvcFees=todEsvc.reduce((s,e)=>s+(e.fee||0),0);
+  const de=g('d-esvc'),ds=g('d-esvc-sub');
+  if(de){de.textContent=fmt(esvcFees);de.style.color=esvcFees>0?'var(--ok)':'var(--tx)';}
+  if(ds)ds.textContent=todEsvc.length+' transaction'+(todEsvc.length!==1?'s':'')+' · tap to view';
 }
 function renderWChart(){
   const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],now=new Date();
@@ -2212,6 +2386,7 @@ function switchRep(t,btn){repT=t;document.querySelectorAll('.tbb').forEach(b=>b.
 function renderRep(){
   const el=g('repContent');if(!el)return;
   if(repT==='fastmovers'){renderFastMovers(el);return;}
+  if(repT==='eservices'){renderEsvcReport(el);return;}
   const now=new Date();
   if(repT==='products'){
     const ps={};
@@ -2663,6 +2838,84 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCam();}
   }
 })();
 
+/* ════ GLOBAL BARCODE SCANNER ════ */
+(function(){
+  let _buf='',_last=0,_timer=null;
+  document.addEventListener('keydown',function(e){
+    const now=Date.now(),gap=now-_last; _last=now;
+    const posPage=g('page-pos');
+    if(!posPage||!posPage.classList.contains('on'))return;
+    const openModal=document.querySelector('.mov.on');
+    if(openModal)return;
+    if(e.key==='Enter'){
+      clearTimeout(_timer);
+      const code=_buf.trim(); _buf='';
+      if(code.length>=3){e.preventDefault();e.stopPropagation();_doScan(code);}
+      return;
+    }
+    if(e.key.length===1){
+      if(gap>500&&_buf.length>0)_buf='';
+      _buf+=e.key;
+      clearTimeout(_timer);
+      _timer=setTimeout(function(){const c=_buf.trim();_buf='';if(c.length>=3)_doScan(c);},400);
+    }
+  },true);
+  function _doScan(code){
+    const p=S.prods.find(x=>x.bc===code||String(x.id)===code);
+    if(!p){toast('Barcode not found: '+code,'warn');return;}
+    if(p.stock<=0){toast(p.name+' is out of stock!','warn');return;}
+    if(p.sellingMode==='rice'){_openRiceSaleSheet(p);return;}
+    if(p.isBundle&&p.bundleQty>1){_promptBundleOrSingle(p);return;}
+    addToCart(p.id);
+    if(isMob())openCartOv();
+    document.querySelectorAll('.pc').forEach(function(card){
+      if(card.getAttribute('onclick')==='addToCart('+p.id+')'){
+        card.style.borderColor='var(--ok)';card.style.background='rgba(46,213,115,.2)';card.style.transform='scale(1.06)';
+        setTimeout(function(){card.style.borderColor='';card.style.background='';card.style.transform='';},700);
+      }
+    });
+  }
+})();
+
+/* ════ GLOBAL BARCODE SCANNER ════ */
+(function(){
+  let _buf='',_last=0,_timer=null;
+  document.addEventListener('keydown',function(e){
+    const now=Date.now(),gap=now-_last; _last=now;
+    const posPage=g('page-pos');
+    if(!posPage||!posPage.classList.contains('on'))return;
+    const openModal=document.querySelector('.mov.on');
+    if(openModal)return;
+    if(e.key==='Enter'){
+      clearTimeout(_timer);
+      const code=_buf.trim(); _buf='';
+      if(code.length>=3){e.preventDefault();e.stopPropagation();_doScan(code);}
+      return;
+    }
+    if(e.key.length===1){
+      if(gap>500&&_buf.length>0)_buf='';
+      _buf+=e.key;
+      clearTimeout(_timer);
+      _timer=setTimeout(function(){const c=_buf.trim();_buf='';if(c.length>=3)_doScan(c);},400);
+    }
+  },true);
+  function _doScan(code){
+    const p=S.prods.find(x=>x.bc===code||String(x.id)===code);
+    if(!p){toast('Barcode not found: '+code,'warn');return;}
+    if(p.stock<=0){toast(p.name+' is out of stock!','warn');return;}
+    if(p.sellingMode==='rice'){_openRiceSaleSheet(p);return;}
+    if(p.isBundle&&p.bundleQty>1){_promptBundleOrSingle(p);return;}
+    addToCart(p.id);
+    if(isMob())openCartOv();
+    document.querySelectorAll('.pc').forEach(function(card){
+      if(card.getAttribute('onclick')==='addToCart('+p.id+')'){
+        card.style.borderColor='var(--ok)';card.style.background='rgba(46,213,115,.2)';card.style.transform='scale(1.06)';
+        setTimeout(function(){card.style.borderColor='';card.style.background='';card.style.transform='';},700);
+      }
+    });
+  }
+})();
+
 /* ════ BARCODE LOOKUP ════ */
 async function _lookupBarcode(code){
   try{
@@ -2696,6 +2949,489 @@ function _parseExp(raw){
   if(/^\d{4}[\/\-]\d{2}$/.test(raw)){const p=raw.split(/[\/\-]/);return p[0]+'-'+p[1]+'-01';}
   try{const d=new Date(raw);if(!isNaN(d))return d.toISOString().split('T')[0];}catch(e){}
   return'';
+}
+
+/* ════ E-SERVICES ════ */
+const GCASH_FEES=[
+  [100,5],[500,10],[1000,15],[1500,20],[2000,30],[2500,40],
+  [3000,50],[3500,60],[4000,70],[4500,80],[5000,90],
+  [5500,100],[6000,110],[6500,120],[7000,130],[7500,140],
+  [8000,150],[8500,160],[9000,170],[9500,180],[10000,190],
+  [10500,200],[11000,210],[11500,220],[12000,230],[12500,240],
+  [13000,250],[13500,260]
+];
+const LOAD_FEES=[{max:97,fee:5},{exact:99,fee:11},{min:100,max:200,fee:10},{min:201,max:300,fee:20},{min:301,max:500,fee:30},{min:501,fee:50}];
+
+function getGcashFee(amt){
+  for(let i=0;i<GCASH_FEES.length;i++){if(amt<=GCASH_FEES[i][0])return GCASH_FEES[i][1];}
+  const last=GCASH_FEES[GCASH_FEES.length-1];
+  return last[1]+Math.ceil((amt-last[0])/500)*10;
+}
+function getLoadFee(amt){
+  if(amt<=97)return 5;if(amt===99)return 11;
+  if(amt>=100&&amt<=200)return 10;if(amt>=201&&amt<=300)return 20;
+  if(amt>=301&&amt<=500)return 30;return 50;
+}
+
+let _curEsvcType='load';
+let _walletTarget='gcash';
+
+function openEsvc(type){
+  _curEsvcType=type;
+  const titles={load:'📱 Load Transaction',cashin:'📲 GCash Cash-In',cashout:'💵 GCash Cash-Out',padala:'📤 GCash Padala',bills:'🏦 Bills Payment',topup:'💳 Top-Up GCash Wallet'};
+  g('esvcTitle').textContent=titles[type]||'E-Service';
+  ['load','cashin','cashout','padala','bills','topup'].forEach(t=>{
+    const el=g('esvc'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(el)el.style.display=t===type?'block':'none';
+  });
+  g('esvcNotes').value='';
+  ['loadAmt','cashinAmt','cashoutAmt','padalaAmt','billsAmt','topupAmt'].forEach(id=>{const el=g(id);if(el)el.value='';});
+  ['loadFeeBox','cashinFeeBox','cashoutFeeBox','padalaFeeBox','billsFeeBox'].forEach(id=>{const el=g(id);if(el)el.style.display='none';});
+  const cs=g('cashoutSource');if(cs)cs.value='register';
+  // Reset cash source buttons
+  selectCashSource('register');
+  const tp=g('topupPreview');if(tp)tp.style.display='none';
+  openMod('mEsvc');
+}
+
+function selectCashSource(source){
+  g('cashoutSource').value=source;
+  const regBtn=g('coSrcRegBtn');
+  const othBtn=g('coSrcOthBtn');
+  if(!regBtn||!othBtn)return;
+  if(source==='register'){
+    regBtn.style.border='2px solid var(--ac)';
+    regBtn.style.background='rgba(61,127,255,.15)';
+    regBtn.style.color='var(--ac)';
+    othBtn.style.border='2px solid var(--bd)';
+    othBtn.style.background='var(--s3)';
+    othBtn.style.color='var(--t2)';
+  } else {
+    othBtn.style.border='2px solid var(--or)';
+    othBtn.style.background='rgba(255,107,53,.15)';
+    othBtn.style.color='var(--or)';
+    regBtn.style.border='2px solid var(--bd)';
+    regBtn.style.background='var(--s3)';
+    regBtn.style.color='var(--t2)';
+  }
+}
+
+function calcLoadFee(){
+  const amt=parseFloat(g('loadAmt').value)||0;
+  const fee=getLoadFee(amt);
+  if(amt<=0){g('loadFeeBox').style.display='none';return;}
+  g('loadFeeBox').style.display='block';
+  g('loadAmtDisp').textContent=fmt(amt);
+  g('loadFeeDisp').textContent=fmt(fee)+' (your earnings)';
+  g('loadTotalDisp').textContent=fmt(amt+fee);
+}
+function calcGcashFee(type){
+  const amtId={cashin:'cashinAmt',cashout:'cashoutAmt',padala:'padalaAmt'}[type];
+  const amt=parseFloat(g(amtId).value)||0;
+  const fee=getGcashFee(amt);
+  const boxId=type+'FeeBox';
+  if(amt<=0){g(boxId).style.display='none';return;}
+  g(boxId).style.display='block';
+  g(type+'AmtDisp').textContent=fmt(amt);
+  g(type+'FeeDisp').textContent=fmt(fee)+' (your earnings)';
+  g(type+'TotalDisp').textContent=fmt(type==='cashout'?amt:amt+fee);
+}
+function calcBillsFee(){
+  const amt=parseFloat(g('billsAmt').value)||0;
+  if(amt<=0){g('billsFeeBox').style.display='none';return;}
+  g('billsFeeBox').style.display='block';
+  g('billsAmtDisp').textContent=fmt(amt);
+  g('billsFeeDisp').textContent='₱25.00 (your earnings)';
+  g('billsTotalDisp').textContent=fmt(amt+25);
+}
+function calcTopupPreview(){
+  const amt=parseFloat(g('topupAmt').value)||0;
+  const prev=g('topupPreview');if(!prev)return;
+  if(amt<=0){prev.style.display='none';return;}
+  prev.style.display='block';
+  const regAfter=(S.cashReg||0)-amt;
+  const walAfter=(S.gcashWallet||0)+amt;
+  g('topupRegAfter').textContent=fmt(regAfter);
+  g('topupRegAfter').style.color=regAfter<0?'var(--rd)':'var(--t2)';
+  g('topupWalAfter').textContent=fmt(walAfter);
+}
+
+function processEsvc(){
+  const type=_curEsvcType;
+  const wallet=S.gcashWallet||0;
+  let txn={id:'TXN-'+String((S.esvcs||[]).length+1).padStart(4,'0'),type,date:new Date().toISOString(),notes:g('esvcNotes').value};
+
+  if(type==='load'){
+    const amt=parseFloat(g('loadAmt').value)||0;
+    if(!amt){toast('Enter load amount','warn');return;}
+    const network=g('loadNetwork').value;
+    const number=g('loadNumber').value.trim();
+    if(!number){toast('Enter customer mobile number','warn');return;}
+    const fee=getLoadFee(amt);
+    // WALLET CHECK
+    if(wallet<amt){_showWalletWarning('load',amt,wallet);return;}
+    Object.assign(txn,{network,number,amount:amt,fee,total:amt+fee,label:network+' Load ₱'+amt.toFixed(0)});
+    S.gcashWallet=wallet-amt;
+  }
+  else if(type==='cashin'){
+    const amt=parseFloat(g('cashinAmt').value)||0;
+    if(!amt){toast('Enter amount','warn');return;}
+    const number=g('cashinNumber').value.trim();
+    if(!number){toast('Enter customer GCash number','warn');return;}
+    const fee=getGcashFee(amt);
+    // WALLET CHECK
+    if(wallet<amt){_showWalletWarning('cashin',amt,wallet);return;}
+    Object.assign(txn,{number,amount:amt,fee,total:amt+fee,label:'GCash Cash-In ₱'+amt.toFixed(0)});
+    S.gcashWallet=wallet-amt;
+  }
+  else if(type==='cashout'){
+    const amt=parseFloat(g('cashoutAmt').value)||0;
+    if(!amt){toast('Enter amount','warn');return;}
+    const number=g('cashoutNumber').value.trim();
+    if(!number){toast('Enter customer GCash number','warn');return;}
+    const source=g('cashoutSource').value;
+    const fee=getGcashFee(amt);
+    // ── Register check (only if source is cash register) ──
+    if(source==='register'){
+      const reg=S.cashReg||0;
+      if(reg<amt){
+        _showRegisterWarning(amt,reg);
+        return;
+      }
+    }
+    Object.assign(txn,{number,amount:amt,fee,total:amt+fee,source,label:'GCash Cash-Out ₱'+amt.toFixed(0)+' ('+source+')'});
+    if(source==='register'){
+      S.gcashWallet=(S.gcashWallet||0)+amt;
+      S.cashReg=(S.cashReg||0)-amt;
+    }
+    // source==='others': no change to wallet or register — just log it
+  }
+  else if(type==='padala'){
+    const amt=parseFloat(g('padalaAmt').value)||0;
+    if(!amt){toast('Enter amount','warn');return;}
+    const toNum=g('padalaTo').value.trim();
+    const from=g('padalaFrom').value.trim();
+    if(!toNum){toast('Enter recipient number','warn');return;}
+    const fee=getGcashFee(amt);
+    // WALLET CHECK
+    if(wallet<amt){_showWalletWarning('padala',amt,wallet);return;}
+    Object.assign(txn,{from,toNum,amount:amt,fee,total:amt+fee,label:'Padala to '+toNum+' ₱'+amt.toFixed(0)});
+    S.gcashWallet=wallet-amt;
+  }
+  else if(type==='bills'){
+    const amt=parseFloat(g('billsAmt').value)||0;
+    if(!amt){toast('Enter bill amount','warn');return;}
+    const biller=g('billsBiller').value.trim();
+    const acctName=g('billsAcctName').value.trim();
+    const acctNo=g('billsAcctNo').value.trim();
+    if(!biller){toast('Enter biller name','warn');return;}
+    if(!acctNo){toast('Enter account/reference number','warn');return;}
+    // WALLET CHECK
+    if(wallet<amt){_showWalletWarning('bills',amt,wallet);return;}
+    Object.assign(txn,{biller,acctName,acctNo,amount:amt,fee:25,total:amt+25,label:biller+' Bills Payment'});
+    S.gcashWallet=wallet-amt;
+  }
+  else if(type==='topup'){
+    const amt=parseFloat(g('topupAmt').value)||0;
+    if(!amt){toast('Enter top-up amount','warn');return;}
+    const note=g('topupNote').value.trim();
+    Object.assign(txn,{amount:amt,fee:0,total:amt,label:'GCash Wallet Top-Up ₱'+amt.toFixed(0),notes:note});
+    S.gcashWallet=(S.gcashWallet||0)+amt;
+    S.cashReg=(S.cashReg||0)-amt;
+  }
+
+  if(!S.esvcs)S.esvcs=[];
+  S.esvcs.push(txn);
+  _save();
+  closeMod('mEsvc');
+  if(type!=='topup')showEsvcReceipt(txn);
+  renderEsvcs();
+  updBalanceDisplay();
+  refreshDash();
+  toast('Transaction recorded!','success');
+}
+
+function _showWalletWarning(type,needed,have){
+  const typeNames={load:'Load',cashin:'Cash-In',padala:'Padala',bills:'Bills Payment'};
+  const shortfall=needed-have;
+  const barPct=Math.min((have/needed)*100,100).toFixed(0);
+  const sheet=document.createElement('div');
+  sheet.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:3000;display:flex;align-items:flex-end;justify-content:center;';
+  sheet.innerHTML=`
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px 32px;animation:slideUp .25s ease;">
+      <div style="width:40px;height:4px;background:var(--bd);border-radius:4px;margin:0 auto 20px;"></div>
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:52px;margin-bottom:10px;">⚠️</div>
+        <div style="font-size:19px;font-weight:800;color:var(--rd);">GCash Wallet Too Low!</div>
+        <div style="font-size:13px;color:var(--t2);margin-top:8px;line-height:1.7;">
+          You need <b style="color:var(--tx);font-size:15px;">${fmt(needed)}</b> for this ${typeNames[type]||type}.<br>
+          Current wallet: <b style="color:var(--rd);">${fmt(have)}</b><br>
+          Short by: <b style="color:var(--rd);font-size:15px;">${fmt(shortfall)}</b>
+        </div>
+      </div>
+      <div style="background:var(--s2);border-radius:var(--rs);padding:14px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;">
+          <span style="color:var(--t2);">Current Wallet</span><span style="font-weight:700;color:var(--rd);">${fmt(have)}</span>
+        </div>
+        <div style="background:var(--bd);border-radius:4px;height:10px;margin-bottom:10px;overflow:hidden;">
+          <div style="height:100%;width:${barPct}%;background:var(--rd);border-radius:4px;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;">
+          <span style="color:var(--t2);">Amount Needed</span><span style="font-weight:700;">${fmt(needed)}</span>
+        </div>
+        <div style="background:var(--bd);border-radius:4px;height:10px;overflow:hidden;">
+          <div style="height:100%;width:100%;background:var(--ac);border-radius:4px;"></div>
+        </div>
+      </div>
+      <div style="background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.2);border-radius:var(--rs);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--t2);line-height:1.6;">
+        💡 Top up at least <b style="color:var(--yw);">${fmt(shortfall)}</b> more to proceed.<br>
+        Tap <b>Top-Up Wallet</b> to add funds from your cash register.
+      </div>
+      <button onclick="this.closest('[style*=fixed]').remove();closeMod('mEsvc');setTimeout(()=>openEsvc('topup'),100);"
+        style="width:100%;background:var(--rd);border:none;color:#fff;padding:16px;border-radius:var(--rs);font-size:15px;font-weight:700;margin-bottom:10px;cursor:pointer;">
+        💳 Top-Up Wallet Now — add ${fmt(shortfall)} or more
+      </button>
+      <button onclick="this.closest('[style*=fixed]').remove();"
+        style="width:100%;background:none;border:1.5px solid var(--bd);color:var(--t2);padding:14px;border-radius:var(--rs);font-size:14px;font-weight:600;cursor:pointer;">
+        Go Back to Transaction
+      </button>
+    </div>`;
+  document.body.appendChild(sheet);
+  sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
+}
+
+function _showRegisterWarning(needed,have){
+  const shortfall=needed-have;
+  const barPct=Math.min((have/needed)*100,100).toFixed(0);
+  const sheet=document.createElement('div');
+  sheet.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:3000;display:flex;align-items:flex-end;justify-content:center;';
+  sheet.innerHTML=`
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px 32px;animation:slideUp .25s ease;">
+      <div style="width:40px;height:4px;background:var(--bd);border-radius:4px;margin:0 auto 20px;"></div>
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:52px;margin-bottom:10px;">🏦</div>
+        <div style="font-size:19px;font-weight:800;color:var(--rd);">Cash Register Too Low!</div>
+        <div style="font-size:13px;color:var(--t2);margin-top:8px;line-height:1.7;">
+          You need <b style="color:var(--tx);font-size:15px;">${fmt(needed)}</b> in the register.<br>
+          Current register: <b style="color:var(--rd);">${fmt(have)}</b><br>
+          Short by: <b style="color:var(--rd);font-size:15px;">${fmt(shortfall)}</b>
+        </div>
+      </div>
+      <div style="background:var(--s2);border-radius:var(--rs);padding:14px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;">
+          <span style="color:var(--t2);">Current Register</span><span style="font-weight:700;color:var(--rd);">${fmt(have)}</span>
+        </div>
+        <div style="background:var(--bd);border-radius:4px;height:10px;margin-bottom:10px;overflow:hidden;">
+          <div style="height:100%;width:${barPct}%;background:var(--rd);border-radius:4px;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;">
+          <span style="color:var(--t2);">Amount Needed</span><span style="font-weight:700;">${fmt(needed)}</span>
+        </div>
+        <div style="background:var(--bd);border-radius:4px;height:10px;overflow:hidden;">
+          <div style="height:100%;width:100%;background:var(--ac);border-radius:4px;"></div>
+        </div>
+      </div>
+      <div style="background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.2);border-radius:var(--rs);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--t2);line-height:1.6;">
+        💡 <b>Options:</b><br>
+        • Add more cash to your register first, then try again<br>
+        • Or switch the source to <b>Others</b> if the cash is coming from a different source
+      </div>
+      <button onclick="this.closest('[style*=fixed]').remove();"
+        style="width:100%;background:var(--ac);border:none;color:#fff;padding:16px;border-radius:var(--rs);font-size:15px;font-weight:700;cursor:pointer;">
+        Go Back and Fix
+      </button>
+    </div>`;
+  document.body.appendChild(sheet);
+  sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
+}
+
+function showEsvcReceipt(txn){
+  const d=new Date(txn.date);
+  const dateStr=d.toLocaleDateString('en-PH')+' '+d.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
+  let details='';
+  if(txn.type==='load'){
+    details=`<div class="rr"><span>Network</span><span>${txn.network}</span></div>
+    <div class="rr"><span>Mobile Number</span><span>${txn.number}</span></div>
+    <div class="rr"><span>Load Amount</span><span>₱${txn.amount.toFixed(2)}</span></div>`;
+  }else if(txn.type==='cashin'||txn.type==='cashout'){
+    details=`<div class="rr"><span>GCash Number</span><span>${txn.number}</span></div>
+    <div class="rr"><span>Amount</span><span>₱${txn.amount.toFixed(2)}</span></div>
+    ${txn.source?`<div class="rr"><span>Cash Source</span><span>${txn.source==='register'?'Cash Register':'Others'}</span></div>`:''}`;
+  }else if(txn.type==='padala'){
+    details=`<div class="rr"><span>Sender</span><span>${txn.from||'—'}</span></div>
+    <div class="rr"><span>Recipient</span><span>${txn.toNum}</span></div>
+    <div class="rr"><span>Amount</span><span>₱${txn.amount.toFixed(2)}</span></div>`;
+  }else if(txn.type==='bills'){
+    details=`<div class="rr"><span>Biller</span><span><b>${txn.biller}</b></span></div>
+    <div class="rr"><span>Account Name</span><span>${txn.acctName||'—'}</span></div>
+    <div class="rr"><span>Account No.</span><span>${txn.acctNo}</span></div>
+    <div class="rr"><span>Bill Amount</span><span>₱${txn.amount.toFixed(2)}</span></div>`;
+  }
+  const typeLabels={load:'LOAD',cashin:'GCASH CASH-IN',cashout:'GCASH CASH-OUT',padala:'GCASH PADALA',bills:'BILLS PAYMENT'};
+  g('esvcRecContent').innerHTML=`<div class="receipt">
+    <div class="rh"><b style="font-size:14px;">${S.cfg.name}</b><br>${S.cfg.addr}<br>${S.cfg.phone}<br><br>
+    <b>${typeLabels[txn.type]||txn.type.toUpperCase()} RECEIPT</b><br>${txn.id}<br>${dateStr}</div>
+    ${details}
+    <div class="rt">Service Fee<span>₱${(txn.fee||0).toFixed(2)}</span></div>
+    <div class="rt" style="font-size:15px;">TOTAL PAID<span>₱${txn.total.toFixed(2)}</span></div>
+    ${txn.notes?`<div class="rr" style="margin-top:6px;"><span>Notes</span><span>${txn.notes}</span></div>`:''}
+    <div class="rf"><div>— — — — — —</div><div style="margin-top:6px;">Thank you!</div></div>
+  </div>`;
+  openMod('mEsvcRec');
+}
+
+function printEsvcRec(){
+  const c=g('esvcRecContent').innerHTML;
+  const w=window.open('','_blank','width=380,height=600');
+  if(!w){toast('Pop-up blocked!','warn');return;}
+  w.document.write(`<!DOCTYPE html><html><head><style>body{font-family:monospace;font-size:12px;padding:10px;margin:0}.rh{text-align:center;border-bottom:1px dashed #999;padding-bottom:10px;margin-bottom:10px}.rr{display:flex;justify-content:space-between}.rt{display:flex;justify-content:space-between;font-weight:700;border-top:1px dashed #999;padding-top:6px;margin-top:6px}.rf{text-align:center;font-size:10px;color:#666;margin-top:10px}</style></head><body>${c}</body></html>`);
+  w.document.close();setTimeout(()=>{w.focus();w.print();},400);
+}
+
+function renderEsvcs(){
+  const today=new Date().toDateString();
+  const todayTxns=(S.esvcs||[]).filter(t=>new Date(t.date).toDateString()===today);
+  const typeInfo={load:{label:'📱 Load',color:'var(--ac)'},cashin:{label:'📲 Cash-In',color:'var(--g)'},cashout:{label:'💵 Cash-Out',color:'var(--or)'},padala:{label:'📤 Padala',color:'var(--ac)'},bills:{label:'🏦 Bills',color:'var(--yw)'},topup:{label:'💳 Top-Up',color:'var(--rd)'}};
+  const todayEl=g('esvcsToday');
+  if(todayEl){
+    const totalFees=todayTxns.filter(t=>t.type!=='topup').reduce((s,t)=>s+(t.fee||0),0);
+    const byType={};
+    todayTxns.forEach(t=>{if(!byType[t.type])byType[t.type]={count:0,fees:0};byType[t.type].count++;byType[t.type].fees+=(t.fee||0);});
+    const coReg=(S.esvcs||[]).filter(t=>new Date(t.date).toDateString()===today&&t.type==='cashout'&&t.source==='register').reduce((s,t)=>s+t.amount,0);
+    const coOth=(S.esvcs||[]).filter(t=>new Date(t.date).toDateString()===today&&t.type==='cashout'&&t.source==='others').reduce((s,t)=>s+t.amount,0);
+    todayEl.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div class="sc sc-g"><div class="sl">Today's Transactions</div><div class="sv">${todayTxns.length}</div></div>
+        <div class="sc sc-b"><div class="sl">Today's Fees Earned</div><div class="sv" style="color:var(--ok);">${fmt(totalFees)}</div></div>
+      </div>
+      ${(coReg>0||coOth>0)?`<div style="background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.2);border-radius:var(--rs);padding:10px 14px;font-size:13px;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:var(--or);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;">💵 Cash-Out Breakdown</div>
+        ${coReg>0?`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:var(--t2);">From Cash Register</span><span style="font-weight:700;color:var(--rd);">-${fmt(coReg)}</span></div>`:''}
+        ${coOth>0?`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:var(--t2);">From Others</span><span style="font-weight:700;color:var(--t2);">${fmt(coOth)}</span></div>`:''}
+      </div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${Object.entries(byType).map(([type,d])=>`<div style="background:var(--s2);border-radius:var(--rs);padding:8px 12px;font-size:12px;"><span>${typeInfo[type]?.label||type}</span><b style="margin-left:8px;color:${typeInfo[type]?.color||'var(--ac)'};">${d.count}× ${d.fees>0?fmt(d.fees):''}</b></div>`).join('')}
+      </div>`;
+  }
+  const histEl=g('esvcsHistory');
+  if(histEl){
+    const all=[...(S.esvcs||[])].reverse().slice(0,50);
+    if(!all.length){histEl.innerHTML='<div class="emptyst"><div class="emo">📱</div><p>No transactions yet</p></div>';return;}
+    function getBalanceNote(t){
+      if(t.type==='topup')return`<span style="color:var(--ok);">Wallet +${fmt(t.amount)}</span> · <span style="color:var(--rd);">Register -${fmt(t.amount)}</span>`;
+      if(t.type==='cashin')return`<span style="color:var(--rd);">Wallet -${fmt(t.amount)}</span>`;
+      if(t.type==='cashout'){
+        if(t.source==='register'){
+          return`<span style="color:var(--ok);">Wallet +${fmt(t.amount)}</span> · <span style="color:var(--rd);">Register -${fmt(t.amount)}</span>`;
+        } else {
+          return`<span style="color:var(--t2);">From Others — no wallet/register change</span>`;
+        }
+      }
+      if(t.type==='load'||t.type==='padala'||t.type==='bills')return`<span style="color:var(--rd);">Wallet -${fmt(t.amount)}</span>`;
+      return'';
+    }
+    histEl.innerHTML=all.map(t=>{
+      const d=new Date(t.date);const tinfo=typeInfo[t.type]||{label:t.type,color:'var(--t2)'};const isTopup=t.type==='topup';
+      return`<div class="inv-card" style="margin-bottom:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div><span class="badge" style="background:rgba(61,127,255,.12);color:${tinfo.color};">${tinfo.label}</span><span style="font-size:11px;color:var(--t3);margin-left:8px;">${t.id}</span></div>
+          <span style="font-size:11px;color:var(--t3);">${d.toLocaleDateString('en-PH')} ${d.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</span>
+        </div>
+        <div class="inv-card-row"><span class="inv-card-lbl">${t.label||'Transaction'}</span><span style="font-weight:700;">${fmt(t.amount)}</span></div>
+        ${!isTopup?`<div class="inv-card-row"><span class="inv-card-lbl">Fee Earned</span><span style="font-weight:800;color:var(--ok);">${fmt(t.fee||0)}</span></div>`:''}
+        <div class="inv-card-row"><span class="inv-card-lbl">Balance Impact</span><span style="font-size:12px;">${getBalanceNote(t)}</span></div>
+        ${t.notes?`<div class="inv-card-row"><span class="inv-card-lbl">Notes</span><span>${t.notes}</span></div>`:''}
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          ${!isTopup?`<button class="btn bgh bsm" style="flex:1;" onclick="showEsvcReceipt(${JSON.stringify(t).replace(/"/g,'&quot;')})">🖨️ Reprint</button>`:''}
+          <button class="btn bd2 bsm" ${!isTopup?'':'style="width:100%"'} onclick="delEsvc('${t.id}')">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function delEsvc(id){
+  if(!confirm('Delete this transaction?'))return;
+  S.esvcs=(S.esvcs||[]).filter(x=>x.id!==id);
+  _save();renderEsvcs();toast('Deleted','danger');
+}
+
+function updBalanceDisplay(){
+  const gw=g('gcashWalletBal');if(gw){gw.textContent=fmt(S.gcashWallet||0);gw.style.color=(S.gcashWallet||0)<500?'var(--rd)':'var(--tx)';}
+  const cr=g('cashRegBal');if(cr){cr.textContent=fmt(S.cashReg||0);cr.style.color=(S.cashReg||0)<500?'var(--rd)':'var(--tx)';}
+  const warn=g('walletWarning');
+  if(warn)warn.style.display=(S.gcashWallet||0)<500?'flex':'none';
+}
+
+function openWalletEdit(){_walletTarget='gcash';g('walletModalTitle').textContent='Update GCash Wallet Balance';g('walletModalLabel').textContent='GCash Wallet Balance (₱)';g('walletAmt').value=S.gcashWallet||0;openMod('mWallet');}
+function openCashEdit(){_walletTarget='cash';g('walletModalTitle').textContent='Update Cash Register Balance';g('walletModalLabel').textContent='Cash in Register (₱)';g('walletAmt').value=S.cashReg||0;openMod('mWallet');}
+function saveWalletBal(){
+  const val=parseFloat(g('walletAmt').value)||0;
+  if(_walletTarget==='gcash')S.gcashWallet=val;else S.cashReg=val;
+  _save();updBalanceDisplay();closeMod('mWallet');toast('Balance updated!','success');
+}
+
+function renderEsvcReport(el){
+  const now=new Date();
+  const todayStr=now.toDateString();
+  const weekStart=new Date(now);weekStart.setDate(weekStart.getDate()-7);
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1);
+  const all=S.esvcs||[];
+  const today=all.filter(t=>new Date(t.date).toDateString()===todayStr);
+  const week=all.filter(t=>new Date(t.date)>=weekStart);
+  const month=all.filter(t=>new Date(t.date)>=monthStart);
+
+  function periodCard(label,txns){
+    if(!txns.length)return`<div style="color:var(--t3);font-size:13px;padding:8px 0;">No transactions</div>`;
+    const load=txns.filter(t=>t.type==='load');
+    const cashin=txns.filter(t=>t.type==='cashin');
+    const cashout=txns.filter(t=>t.type==='cashout');
+    const padala=txns.filter(t=>t.type==='padala');
+    const bills=txns.filter(t=>t.type==='bills');
+    const feeLoad=load.reduce((s,t)=>s+(t.fee||0),0);
+    const feeCashin=cashin.reduce((s,t)=>s+(t.fee||0),0);
+    const feeCashout=cashout.reduce((s,t)=>s+(t.fee||0),0);
+    const feePadala=padala.reduce((s,t)=>s+(t.fee||0),0);
+    const feeBills=bills.reduce((s,t)=>s+(t.fee||0),0);
+    const totalFees=feeLoad+feeCashin+feeCashout+feePadala+feeBills;
+    const coReg=cashout.filter(t=>t.source==='register').reduce((s,t)=>s+t.amount,0);
+    const coOth=cashout.filter(t=>t.source==='others').reduce((s,t)=>s+t.amount,0);
+    const networks={};
+    load.forEach(t=>{if(!networks[t.network])networks[t.network]={count:0,fees:0,vol:0};networks[t.network].count++;networks[t.network].fees+=(t.fee||0);networks[t.network].vol+=t.amount;});
+    const svcRows=[
+      {label:'📱 Load',count:load.length,fees:feeLoad,vol:load.reduce((s,t)=>s+t.amount,0)},
+      {label:'📲 Cash-In',count:cashin.length,fees:feeCashin,vol:cashin.reduce((s,t)=>s+t.amount,0)},
+      {label:'💵 Cash-Out',count:cashout.length,fees:feeCashout,vol:cashout.reduce((s,t)=>s+t.amount,0)},
+      {label:'📤 Padala',count:padala.length,fees:feePadala,vol:padala.reduce((s,t)=>s+t.amount,0)},
+      {label:'🏦 Bills',count:bills.length,fees:feeBills,vol:bills.reduce((s,t)=>s+t.amount,0)},
+    ].filter(r=>r.count>0);
+    return`
+      <div style="background:rgba(61,127,255,.1);border:1px solid rgba(61,127,255,.2);border-radius:var(--r);padding:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div><div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;">Total Fees — ${label}</div><div style="font-size:26px;font-weight:900;color:var(--ok);">${fmt(totalFees)}</div></div>
+        <div style="text-align:right;"><div style="font-size:13px;font-weight:700;">${txns.length} transactions</div></div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px;">Income by Service (Separate)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        ${svcRows.map(r=>`<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rs);padding:12px;"><div style="font-size:13px;font-weight:700;margin-bottom:6px;">${r.label}</div><div style="font-size:20px;font-weight:900;color:var(--ok);">${fmt(r.fees)}</div><div style="font-size:11px;color:var(--t2);margin-top:3px;">${r.count} txn${r.count!==1?'s':''} · vol ${fmt(r.vol)}</div></div>`).join('')}
+      </div>
+      ${cashout.length?`<div style="background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.2);border-radius:var(--rs);padding:10px 14px;font-size:13px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;color:var(--or);margin-bottom:6px;text-transform:uppercase;">💵 Cash-Out by Source</div>
+        ${coReg>0?`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:var(--t2);">From Cash Register</span><span style="font-weight:700;color:var(--rd);">${fmt(coReg)}</span></div>`:''}
+        ${coOth>0?`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:var(--t2);">From Others</span><span style="font-weight:700;">${fmt(coOth)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--bd);margin-top:4px;"><span style="color:var(--t2);">Fee Earned</span><span style="font-weight:800;color:var(--ok);">${fmt(feeCashout)}</span></div>
+      </div>`:''}
+      ${Object.keys(networks).length>1?`<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px;">📱 Load by Network</div>
+      <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:12px;margin-bottom:12px;">
+        ${Object.entries(networks).sort((a,b)=>b[1].fees-a[1].fees).map(([net,d])=>{const maxFee=Math.max(...Object.values(networks).map(x=>x.fees),1);const pct=((d.fees/maxFee)*100).toFixed(0);return`<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span style="font-weight:600;">${net}</span><span><b style="color:var(--ok);">${fmt(d.fees)}</b> <span style="color:var(--t2);font-size:11px;">${d.count}× vol ${fmt(d.vol)}</span></span></div><div style="background:var(--bd);border-radius:4px;height:6px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:var(--ac);border-radius:4px;"></div></div></div>`;}).join('')}
+      </div>`:''}`;
+  }
+
+  el.innerHTML=`<div style="background:rgba(61,127,255,.08);border:1px solid rgba(61,127,255,.2);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;font-size:13px;line-height:1.6;">📱 <b>E-Services Report</b> — Load, GCash, Padala, Bills fees tracked separately.</div>
+  ${!all.length?'<div class="emptyst"><div class="emo">📱</div><p>No transactions yet</p></div>':
+  `<div style="background:var(--s2);border-radius:var(--r);padding:14px;margin-bottom:14px;"><div style="font-size:14px;font-weight:800;margin-bottom:12px;">📅 Today</div>${periodCard('Today',today)}</div>
+  <div style="background:var(--s2);border-radius:var(--r);padding:14px;margin-bottom:14px;"><div style="font-size:14px;font-weight:800;margin-bottom:12px;">📆 This Week</div>${periodCard('This Week',week)}</div>
+  <div style="background:var(--s2);border-radius:var(--r);padding:14px;margin-bottom:14px;"><div style="font-size:14px;font-weight:800;margin-bottom:12px;">🗓️ This Month</div>${periodCard('This Month',month)}</div>
+  ${all.length!==month.length?`<div style="background:var(--s2);border-radius:var(--r);padding:14px;margin-bottom:14px;"><div style="font-size:14px;font-weight:800;margin-bottom:12px;">📈 All Time</div>${periodCard('All Time',all)}</div>`:''}`}`;
 }
 
 /* ════ CLAUDE HELP ════ */
